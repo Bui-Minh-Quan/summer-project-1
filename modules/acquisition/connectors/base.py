@@ -1,0 +1,32 @@
+""" 
+Abstract connector interface.
+
+Every data source connector must inherit from BaseConnector
+"""
+
+from abc import ABC, abstractmethod
+from datetime import datetime 
+
+from models.document import Document 
+
+class BaseConnector(ABC):
+    
+    @abstractmethod
+    def fetch_latest_news(self, limit: int = 50) -> list[Document]:
+        # Fetch the latest financial news
+        raise NotImplementedError
+    
+    @abstractmethod
+    def fetch_latest_posts(self, limit: int = 50) -> list[Document]:
+        # Fetch the latest social posts 
+        raise NotImplementedError 
+
+    @abstractmethod
+    def fetch_history(self, start_date: datetime, end_date: datetime) -> list[Document]:
+        # Fetch historical documents between two dates
+        raise NotImplementedError
+    
+    @abstractmethod
+    def health_check(self) -> bool:
+        # Vertify whether the connector can communicate
+        raise NotImplementedError

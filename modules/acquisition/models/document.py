@@ -1,0 +1,78 @@
+""" 
+Canonical document model for Financial AI Platform
+
+Every textual data source must be converted into this schema before entering the pipeline.
+"""
+
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field, ConfigDict
+
+# ----------------------------------------------------------------------
+# Enumerations
+# ----------------------------------------------------------------------
+class DocumentType(str, Enum):
+    NEWS = "news"
+    POST = "post"
+    REPORT = "report"
+    ANNOUNCEMENT = "announcement"
+    MACRO = "macro"
+    OTHER = "other"
+
+class Language(str, Enum):
+    VI = "vi"
+    EN = "en"
+    UNKNOWN = "unknown"
+
+# ----------------------------------------------------------------------
+# Canonical Document
+# ----------------------------------------------------------------------
+
+class Document(BaseModel):
+    model_config = ConfigDict(extra="allow", validate_assignment=True)
+
+    # Identity
+    id: str = Field(description="Unique document identifier")
+    source: str = Field(description="Source provider")
+
+    url: str | None = Field(
+        default=None,
+        description="Original document url"
+    )
+
+    # Content
+    title: str | None = None 
+    content: str | None = None 
+    raw_html: str | None = Field(
+        default=None,
+        description="Original HTML before cleaning"
+    )
+
+    # Metadata
+    author: str | None = None 
+    language: Language = Language.UNKNOWN 
+    document_type: DocumentType = DocumentType.OTHER
+
+    symbols: list[str] = Field(
+        default_factory=list,
+        description="Mentioned stock symbol"
+    )
+
+    # Time 
+    published_at: datetime | None = None 
+    retrieved_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        description="When this document was fetched"
+    )
+
+    # Processing
+    quality_score: float | None = None 
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, 
+        description="Connector-specific metadata"
+    )
+
+
+
