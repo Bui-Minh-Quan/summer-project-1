@@ -130,7 +130,7 @@ class FireAntConnector(BaseConnector):
     def map_document(self, raw: RawDocument) -> Optional[Document]:
         try: 
             # 1. Access top-level attributes using dot notation
-            doc_type = raw.type
+            doc_type = raw.document_type
             doc_id = raw.id
             if not doc_id:
                 return None 
@@ -253,7 +253,7 @@ class FireAntConnector(BaseConnector):
                 # doc = self._map_document(raw_item, doc_type)
                 doc = RawDocument(id = doc_id_str,
                                   source="fireant",
-                                  type=doc_type,
+                                  document_type=doc_type,
                                   fetched_at=datetime.now(timezone.utc),
                                   payload=raw_item)
                 if doc:
@@ -329,7 +329,6 @@ class FireAntConnector(BaseConnector):
         # 1. Check the newest data (offset = 0)
         date_0 = self._probe_date(api_type, offset=0)
         if not date_0 or date_0 <= target_date:
-            logger.info("Target date is newer than the latest available server data. Starting at offset 0.")
             return 0
         
         # 2. Phase 1: Exponential serach to bound the upper limit

@@ -2,9 +2,12 @@
 
 import re 
 
-from bs4 import BeautifulSoup
+import warnings
+from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 
 from models.document import Document
+
+warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 class DocumentCleaner:
     # Basic cleaner for textual documents.

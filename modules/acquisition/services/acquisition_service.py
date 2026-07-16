@@ -1,118 +1,159 @@
-""" 
-Coordinates the acquisition pipeline:
-Connector -> Raw Document -> Raw MongoDB -> Document Mapping 
-Validation -> Deduplication -> Cleaning -> MongoDB
-"""
+import logging
+import time 
+from datetime import datetime, timezone, timedelta
+from typing import Optional, Any
+from pydantic import BaseModel
 
-from dataclasses import dataclass 
-from datetime import datetime 
-from time import perf_counter 
-
-from connectors.base import BaseConnector
-from models.document import Document, RawDocument
 from preprocessing.cleaner import DocumentCleaner
-from preprocessing.validator import DocumentValidator
 from preprocessing.deduplicator import DocumentDeduplicator
-from repository.mongodb import MongoRepository
+from preprocessing.validator import DocumentValidator
 
-# Report 
-@dataclass
-class ProcessingReport:
+from connectors.fireant import FireAntConnector
+from repository.mongodb import MongoRepository
+from publishers.kafka_publisher import KafkaDocumentPublisher
+from models.document import Document, RawDocument, DocumentType
+
+
+logger = logging.getLogger("acquisition_service")
+
+class PipelineReport(BaseModel):
+    # Track metrics for a single ingestion execution cycle
     fetched: int = 0
+    raw_saved: int = 0
     mapped: int = 0
     cleaned: int = 0
     invalid: int = 0
     duplicates: int = 0
     stored: int = 0
-    duration: float = 0.0 
+    published: int = 0
+    duration: float = 0.0
 
-# Acquisition Service
 class AcquisitionService:
     def __init__(
         self,
-        connector: BaseConnector,
+        connector: FireAntConnector,
         raw_repository: MongoRepository,
         document_repository: MongoRepository,
         cleaner: DocumentCleaner,
         validator: DocumentValidator,
-        deduplicator: DocumentDeduplicator
+        deduplicator: DocumentDeduplicator,
+        publisher: KafkaDocumentPublisher,
+        kafka_topic: str = "financial-documents-stream"
     ):
-        self.connector = connector 
-
+        self.connector = connector
         self.raw_repository = raw_repository
         self.document_repository = document_repository
-
-        self.cleaner = cleaner 
+        self.cleaner = cleaner
         self.validator = validator
         self.deduplicator = deduplicator
-
-        # In-memory duplicate cache
-        self.document_hashes: set[str] = set()
+        self.publisher = publisher
+        self.kafka_topic = kafka_topic
 
     
-    # Public APIs
-    def backfill_news(self, limit: int = 100) -> ProcessingReport:
-        raw_documents = self.connector.fetch_latest_news(limit)
+    def _process_pipeline(self, raw_docs: list[RawDocument]) -> PipelineReport:
+        # Internal engine pushes raw payloads through ETL and Streaming
+        start_time = time.time()
+        report = PipelineReport(fetched=len(raw_docs))
+        if not raw_docs:
+            return report 
+        
+        # 1. Save untouched JSON to raw_documents collection
+        for raw in raw_docs:
+            try:
+                self.raw_repository.collection.update_one(
+                    {"id": raw.id},
+                    {"$setOnInsert": raw.model_dump(mode="json")},
+                    upsert=True
+                )
 
-        return self._run_pipeline(raw_documents)
-    
-    def backfill_posts(self, limit: int = 100) -> ProcessingReport:
-        raw_documents = self.connector.fetch_latest_posts(limit)
-        return self._run_pipeline(raw_documents)
+                report.raw_saved += 1
+            
+            except Exception as e:
+                logger.error(f"Failed to archive raw doc {raw.id}: {e}")
 
-    def process_raw_documents(self, raw_documents: list[RawDocument]) -> ProcessingReport:
-        return self._run_pipeline(raw_documents)
-    
-    # Internal Pipeline
-    def _run_pipeline(self, raw_documents: list[RawDocument]) -> ProcessingReport:
-        report = ProcessingReport()
+        # 2. Map to Canonical Schema
+        cannonical_docs: list[Document] = []
+        for raw in raw_docs:
+            doc = self.connector.map_document(raw)
 
-        start = perf_counter()
-
-        report.fetched = len(raw_documents)
-
-        # Save raw payloads
-        self.raw_repository.save_many(raw_documents)
-
-        processed_documents: list[Document] = []
-
-        # Process documents 
-        for raw_doc in raw_documents:
-            # Mapping
-            document = self.connector.map_document(raw_doc)
-
-            if document is None:
+            if doc:
+                cannonical_docs.append(doc)
+                report.mapped += 1
+        
+        # 3. Clean, Validate and Deduplicate
+        valid_docs: list[Document] = []
+        for doc in cannonical_docs:
+            # Validate 
+            if not self.validator.validate(doc):
+                report.invalid += 1
                 continue 
 
-            report.mapped += 1 
+            # Clean Text
+            cleaned_doc = self.cleaner.clean(doc)
+            report.cleaned += 1
+
+            # Check duplicates
+            # Temporarily leave it blank here
+
+            valid_docs.append(doc)
         
-            # Duplicate detection
-            fingerprint = self.deduplicator.fingerprint(document)
-
-            if fingerprint in self.document_hashes:
-                report.duplicates += 1
-                continue
-
-            self.document_hashes.add(fingerprint)
-
-            # Validation
-            validation = self.validator.validate(document)
-
-            if not validation.valid:
-                report.invalid += 1
-                continue
-
-            # Cleaning 
-            document = self.cleaner.clean(document)
-            
-            processed_documents.append(document)
+        # 4. Save to Collection
+        if valid_docs:
+            report.stored = self.document_repository.save_many(valid_docs)
         
-        # Save processed documents
-        if processed_documents:
-            report.stored = self.document_repository.save_many(processed_documents)
+            # 5. Publish to Kafka Stream
+            report.published = self.publisher.publish_batch(
+                self.kafka_topic,
+                valid_docs
+            )
         
-        
-        report.duration = perf_counter() - start 
-
+        report.duration = time.time() - start_time
         return report
+    
+    # Execution modes 
+    def run_backfill(self, start_date, end_date: datetime) -> PipelineReport:
+        # Mode 1: Historical backfill
+        logger.info(f"Starting backfill mode: {start_date} -> {end_date}")
+        raw_docs = self.connector.fetch_history(start_date=start_date, end_date=end_date)
+
+        return self._process_pipeline(raw_docs)
+    
+
+    def run_continuous(self, interval_seconds: int = 300, batch_limit: int = 500):
+        # Mode 2: Continuous streaming
+        logger.info(f"Starting continuous streaming mode")
+        try: 
+            while True:
+                logger.info("Starting new ingestion cycle")
+
+                # 1. Get watermarks from DB to prevent re-fetching old data
+                news_watermark = self.document_repository.get_latest_timestamp(source="fireant", doc_type=DocumentType.NEWS.value)
+                posts_watermark = self.document_repository.get_latest_timestamp(source="fireant", doc_type=DocumentType.POST.value)
+
+                # 2. Fetch latest data
+                logger.info(f"Fetching news since watermark: {news_watermark}")
+                latest_news = self.connector.fetch_latest_news(limit=batch_limit, since_timestamp=news_watermark)
+
+                logger.info(f"Fetch posts since watermark: {posts_watermark}")
+                latest_posts = self.connector.fetch_latest_posts(limit=batch_limit, since_timestamp=posts_watermark)
+
+                all_raw = latest_news + latest_posts
+
+                # 3. Process and Publish
+                if all_raw:
+                    report = self._process_pipeline(all_raw)
+                    logger.info(f"✅ Cycle Complete | Fetched: {report.fetched} | Stored: {report.stored} | Published to Kafka: {report.published} | Time: {report.duration:.2f}s")
+                else:
+                    logger.info("💤 No new documents found on server.")
+
+                
+                # 4. Sleep untill next cycle
+                logger.info(f"Sleeping for {interval_seconds} seconds...\n")
+                time.sleep(interval_seconds)
+            
+        except KeyboardInterrupt:
+            logger.info("🛑 Continuous loop terminated by user.")
+        finally:
+            self.publisher.close()
+
 

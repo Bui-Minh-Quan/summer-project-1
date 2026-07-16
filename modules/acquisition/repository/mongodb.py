@@ -4,6 +4,8 @@ MongoDB implementation of the repository
 
 from typing import Optional
 
+from datetime import datetime
+
 from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
 
@@ -97,4 +99,24 @@ class MongoRepository(BaseRepository):
 
     def close(self):
         self.client.close()
+    
+    # Helper 
+    def get_latest_timestamp(self, source: Optional[str] = None, doc_type: Optional[str] = None) -> Optional[datetime]:
+        # Queries the database for the most recent published_at timestamp
+
+        query = {}
+        
+        if source:
+            query["source"] = source 
+        if doc_type:
+            query["document_type"] = doc_type
+        
+        # Sort descending by publised_at and grab the first one
+        doc = self.collection.find_one(query, sort=[("published_at", -1)])
+
+        if doc and "publised_at" in doc:
+            return doc["publised_at"]
+        
+        return None
+
         
