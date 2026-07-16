@@ -8,7 +8,7 @@ from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
 
 from models.document import Document
-from base import BaseRepository
+from repository.base import BaseRepository
 
 class MongoRepository(BaseRepository):
     # MongoDB repository for Document objects

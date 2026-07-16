@@ -12,6 +12,8 @@ class DocumentCleaner:
     def clean(self, document: Document) -> Document:
         if document.content:
             document.content = self._clean_html(document.content)
+        
+        return document
     
     @staticmethod
     def _clean_html(text: str) -> str:
@@ -21,7 +23,7 @@ class DocumentCleaner:
 
         text = soup.get_text(separator=" ")
 
-        text = re.sub(r"\S+", " ", text)
+        text = re.sub(r"\s+", " ", text)
 
         return text.strip()
     

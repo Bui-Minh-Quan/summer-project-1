@@ -1,7 +1,7 @@
 # Basic document validator
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from models.document import Document, Language
 
@@ -35,7 +35,7 @@ class DocumentValidator:
         # Date
 
         if document.published_at:
-            if document.published_at > datetime.utcnow():
+            if document.published_at > datetime.now(timezone.utc):
                 errors.appen("Publication date is in the future")
 
         
