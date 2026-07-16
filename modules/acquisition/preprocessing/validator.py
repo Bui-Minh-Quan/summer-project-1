@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from models.document import Document, Language
+from models.document import Document, Language, DocumentType
 
 @dataclass
 class ValidationResult:
@@ -14,8 +14,8 @@ class DocumentValidator:
         errors = []
 
         # Required fields
-        if not document.title:
-            errors.append("Missing title.")
+        if document.document_type == DocumentType.NEWS and not document.title:
+            errors.append("Missing title for news article.")
         
         if not document.content:
             errors.append("Missing content.")

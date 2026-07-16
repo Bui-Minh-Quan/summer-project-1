@@ -10,6 +10,11 @@ from datetime import datetime
 from models.document import Document, RawDocument
 
 class BaseConnector(ABC):
+    @property
+    @abstractmethod
+    def source_name(self) -> str:
+        """Return unique source identifier (e.g., 'fireant', 'vnexpress')"""
+        pass
     
     @abstractmethod
     def fetch_latest_news(self, limit: int = 50) -> list[RawDocument]:

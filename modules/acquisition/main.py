@@ -14,6 +14,8 @@ from preprocessing.cleaner import DocumentCleaner
 from preprocessing.validator import DocumentValidator
 from preprocessing.deduplicator import DocumentDeduplicator
 
+from config import config
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,9 +32,6 @@ def main():
     KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
     DATABASE = "financial_ai"
 
-    if not MONGO_URI or not FIREANT_TOKEN:
-        logger.error("❌ Fatal: Missing MONGO_URI or Fire_Ant_Bearer in .env file!")
-        sys.exit(1)
     
     # CLI Argument Parsing
     parser = argparse.ArgumentParser(description="Financial AI Platform - Data Acquisition Engine")
@@ -51,9 +50,9 @@ def main():
         sys.exit(1)
     logger.info("✅ FireAnt API Connection Established.")
 
-    raw_repo = MongoRepository(uri=MONGO_URI, database=DATABASE, collection="raw_documents")
-    doc_repo = MongoRepository(uri=MONGO_URI, database=DATABASE, collection="documents")
-    publisher = KafkaDocumentPublisher(bootstrap_servers=KAFKA_BROKER)
+    raw_repo = MongoRepository(uri=config.mongo_uri, database=DATABASE, collection="raw_documents")
+    doc_repo = MongoRepository(uri=config.mongo_uri, database=DATABASE, collection="documents")
+    publisher = KafkaDocumentPublisher(bootstrap_servers=config.kafka_broker)
 
     # Instantiate Orchestrator
     service = AcquisitionService(
@@ -63,8 +62,7 @@ def main():
         cleaner=DocumentCleaner(),         
         validator=DocumentValidator(),      
         deduplicator=DocumentDeduplicator(),
-        publisher=publisher,
-        kafka_topic="financial-documents-stream"
+        publisher=publisher
     )
 
     try:

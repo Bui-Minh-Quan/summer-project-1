@@ -96,6 +96,10 @@ class AcquisitionService:
 
             deduped_doc = self.deduplicator.process(cleaned_doc)
 
+            if self.deduplicator.is_duplicate(deduped_doc, self.document_repository):
+                report.duplicates += 1
+                continue  
+
             valid_docs.append(deduped_doc)
         
         # 4. Save to Collection
@@ -128,8 +132,9 @@ class AcquisitionService:
                 logger.info("Starting new ingestion cycle")
 
                 # 1. Get watermarks from DB to prevent re-fetching old data
-                news_watermark = self.document_repository.get_latest_timestamp(source="fireant", doc_type=DocumentType.NEWS.value)
-                posts_watermark = self.document_repository.get_latest_timestamp(source="fireant", doc_type=DocumentType.POST.value)
+                src = self.connector.source_name
+                news_watermark = self.document_repository.get_latest_timestamp(source=src, doc_type=DocumentType.NEWS.value)
+                posts_watermark = self.document_repository.get_latest_timestamp(source=src, doc_type=DocumentType.POST.value)
 
                 # 2. Fetch latest data
                 logger.info(f"Fetching news since watermark: {news_watermark}")

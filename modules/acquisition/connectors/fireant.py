@@ -27,6 +27,10 @@ class FireAntConnector(BaseConnector):
         self.max_workers = max_workers
         self.session = self._init_session()
 
+    @property
+    def source_name(self) -> str:
+        return "fireant"
+
     def _init_session(self) -> requests.Session:
         # Intialize an HTTP session with retry logic and standard headers.
         session = requests.Session()
