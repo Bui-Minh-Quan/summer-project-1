@@ -76,3 +76,9 @@ class Document(BaseModel):
 
 
 
+class RawDocument(BaseModel):
+    id: str 
+    source: str 
+    type: DocumentType
+    fetched_at: datetime
+    payload: dict[str, Any]

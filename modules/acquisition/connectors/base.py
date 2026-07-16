@@ -7,22 +7,22 @@ Every data source connector must inherit from BaseConnector
 from abc import ABC, abstractmethod
 from datetime import datetime 
 
-from models.document import Document 
+from models.document import Document, RawDocument
 
 class BaseConnector(ABC):
     
     @abstractmethod
-    def fetch_latest_news(self, limit: int = 50) -> list[Document]:
+    def fetch_latest_news(self, limit: int = 50) -> list[RawDocument]:
         # Fetch the latest financial news
         raise NotImplementedError
     
     @abstractmethod
-    def fetch_latest_posts(self, limit: int = 50) -> list[Document]:
+    def fetch_latest_posts(self, limit: int = 50) -> list[RawDocument]:
         # Fetch the latest social posts 
         raise NotImplementedError 
 
     @abstractmethod
-    def fetch_history(self, start_date: datetime, end_date: datetime) -> list[Document]:
+    def fetch_history(self, start_date: datetime, end_date: datetime) -> list[RawDocument]:
         # Fetch historical documents between two dates
         raise NotImplementedError
     
