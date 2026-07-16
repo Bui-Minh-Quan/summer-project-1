@@ -8,6 +8,7 @@ from datetime import datetime
 
 from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
+from pymongo.errors import BulkWriteError
 
 from models.document import Document
 from repository.base import BaseRepository
@@ -25,6 +26,9 @@ class MongoRepository(BaseRepository):
         # Make document id unique
         self.collection.create_index("id", unique=True)
 
+        self.collection.create_index("fingerprint", unique=True, sparse=True)
+
+
     
     # CRUD
     def save(self, document: Document) -> str:
@@ -34,14 +38,14 @@ class MongoRepository(BaseRepository):
         )
 
     def save_many(self, documents: list[Document]) -> int:
-        # Insert many documents
-        # Documents already existing will be ignored
-
+        """
+        Insert many documents using unordered bulk writes.
+        Silently ignores any duplicate ID or duplicate fingerprint errors.
+        """
         if not documents:
             return 0
         
         operations = []
-
         for document in documents:
             operations.append(
                 UpdateOne(
@@ -51,13 +55,26 @@ class MongoRepository(BaseRepository):
                 )
             )
         
-        result = self.collection.bulk_write(
-            operations,
-            ordered=False
-        )
-
-        return result.upserted_count
-    
+        try:
+            result = self.collection.bulk_write(operations, ordered=False)
+            return result.upserted_count
+            
+        except BulkWriteError as bwe:
+            # Check if there are any errors OTHER than code 11000 (Duplicate Key)
+            real_errors = [
+                err for err in bwe.details.get("writeErrors", [])
+                if err.get("code") != 11000
+            ]
+            
+            if real_errors:
+                # If a real database failure occurred (e.g., auth failure, disk full), crash loudly!
+                raise bwe
+            
+            # If all errors were just duplicate keys, gracefully extract the count of successful saves!
+            successful_saves = bwe.details.get("nUpserted", 0) + bwe.details.get("nInserted", 0)
+            return successful_saves
+        
+        
     def upsert(self, document: Document) -> str:
         # Replace document if it exists
         # Else just insert it
@@ -101,22 +118,21 @@ class MongoRepository(BaseRepository):
         self.client.close()
     
     # Helper 
-    def get_latest_timestamp(self, source: Optional[str] = None, doc_type: Optional[str] = None) -> Optional[datetime]:
-        # Queries the database for the most recent published_at timestamp
+    def exists_by_fingerprint(self, fingerprint: str) -> bool:
+        return self.collection.count_documents({"fingerprint": fingerprint}, limit=1) > 0
+    
 
+    def get_latest_timestamp(self, source: Optional[str] = None, doc_type: Optional[str] = None) -> Optional[datetime]:
         query = {}
-        
         if source:
             query["source"] = source 
         if doc_type:
             query["document_type"] = doc_type
         
-        # Sort descending by publised_at and grab the first one
         doc = self.collection.find_one(query, sort=[("published_at", -1)])
 
-        if doc and "publised_at" in doc:
-            return doc["publised_at"]
-        
+        if doc and "published_at" in doc:
+            return doc["published_at"]
         return None
 
         

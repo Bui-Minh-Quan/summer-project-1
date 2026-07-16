@@ -9,6 +9,7 @@ from preprocessing.deduplicator import DocumentDeduplicator
 from preprocessing.validator import DocumentValidator
 
 from connectors.fireant import FireAntConnector
+from connectors.base import BaseConnector
 from repository.mongodb import MongoRepository
 from publishers.kafka_publisher import KafkaDocumentPublisher
 from models.document import Document, RawDocument, DocumentType
@@ -31,14 +32,14 @@ class PipelineReport(BaseModel):
 class AcquisitionService:
     def __init__(
         self,
-        connector: FireAntConnector,
+        connector: BaseConnector,
         raw_repository: MongoRepository,
         document_repository: MongoRepository,
         cleaner: DocumentCleaner,
         validator: DocumentValidator,
         deduplicator: DocumentDeduplicator,
         publisher: KafkaDocumentPublisher,
-        kafka_topic: str = "financial-documents-stream"
+        kafka_topic: str = "textual-documents"
     ):
         self.connector = connector
         self.raw_repository = raw_repository
@@ -84,7 +85,7 @@ class AcquisitionService:
         valid_docs: list[Document] = []
         for doc in cannonical_docs:
             # Validate 
-            if not self.validator.validate(doc):
+            if not self.validator.validate(doc).valid: 
                 report.invalid += 1
                 continue 
 
@@ -92,10 +93,10 @@ class AcquisitionService:
             cleaned_doc = self.cleaner.clean(doc)
             report.cleaned += 1
 
-            # Check duplicates
-            # Temporarily leave it blank here
 
-            valid_docs.append(doc)
+            deduped_doc = self.deduplicator.process(cleaned_doc)
+
+            valid_docs.append(deduped_doc)
         
         # 4. Save to Collection
         if valid_docs:

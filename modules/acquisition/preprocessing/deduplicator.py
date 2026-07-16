@@ -1,20 +1,24 @@
-# simple duplicate detector
-
 import hashlib
-
 from models.document import Document
+from repository.mongodb import MongoRepository
 
 class DocumentDeduplicator:
-    # Computes deterministic document figerprints
+    """Computes deterministic document fingerprints and manages deduplication."""
 
     @staticmethod
     def fingerprint(document: Document) -> str:
+        # Create a deterministic string from title and source
         text = (document.title or "") + "|" + (document.source or "")
-
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
     
-    @staticmethod 
-    def is_duplicate(document: Document, existing_hashes: set[str]) -> bool:
-        fingerprint = DocumentDeduplicator.fingerprint(document)
+    def process(self, document: Document) -> Document:
+        """Computes and assigns the SHA-256 fingerprint to the document."""
+        document.fingerprint = self.fingerprint(document)
+        return document
 
-        return fingerprint in existing_hashes
+    @staticmethod
+    def is_duplicate(self, document: Document, repository: MongoRepository) -> bool:
+        """Checks if fingerprint already exists in MongoDB."""
+        if not document.fingerprint:
+            document.fingerprint = self.fingerprint(document)
+        return repository.exists_by_fingerprint(document.fingerprint)

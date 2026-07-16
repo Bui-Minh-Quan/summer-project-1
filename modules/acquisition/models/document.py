@@ -37,6 +37,11 @@ class Document(BaseModel):
     id: str = Field(description="Unique document identifier")
     source: str = Field(description="Source provider")
 
+    fingerprint: str | None = Field(
+        default=None,
+        description="SHA-256 deterministic content hash for deduplication"
+    )
+
     url: str | None = Field(
         default=None,
         description="Original document url"
