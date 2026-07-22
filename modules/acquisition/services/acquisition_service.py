@@ -83,6 +83,7 @@ class AcquisitionService:
         
         # 3. Clean, Validate and Deduplicate
         valid_docs: list[Document] = []
+        seen_in_batch: set[str] = set()
         for doc in cannonical_docs:
             # Validate 
             if not self.validator.validate(doc).valid: 
@@ -96,9 +97,13 @@ class AcquisitionService:
 
             deduped_doc = self.deduplicator.process(cleaned_doc)
 
-            if self.deduplicator.is_duplicate(deduped_doc, self.document_repository):
+            if (deduped_doc.fingerprint in seen_in_batch) or self.deduplicator.is_duplicate(deduped_doc, self.document_repository):
                 report.duplicates += 1
-                continue  
+                continue
+
+            if deduped_doc.fingerprint:
+                seen_in_batch.add(deduped_doc.fingerprint)
+
 
             valid_docs.append(deduped_doc)
         
