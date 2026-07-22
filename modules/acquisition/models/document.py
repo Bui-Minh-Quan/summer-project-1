@@ -4,7 +4,7 @@ Canonical document model for Financial AI Platform
 Every textual data source must be converted into this schema before entering the pipeline.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -67,9 +67,10 @@ class Document(BaseModel):
 
     # Time 
     published_at: datetime | None = None 
+    
     retrieved_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="When this document was fetched"
+    default_factory=lambda: datetime.now(timezone.utc),
+    description="When this document was fetched"
     )
 
     # Processing

@@ -15,6 +15,9 @@ class DocumentCleaner:
     def clean(self, document: Document) -> Document:
         if document.content:
             document.content = self._clean_html(document.content)
+
+        if document.title:
+            document.title = self._clean_html(document.title)
         
         return document
     

@@ -18,7 +18,7 @@ class DocumentDeduplicator:
 
     # In preprocessing/deduplicator.py:
     @staticmethod
-    def is_duplicate(document: Document, repository: MongoRepository) -> bool: # Removed 'self'
+    def is_duplicate(document: Document, repository: MongoRepository) -> bool: 
         if not document.fingerprint:
             document.fingerprint = DocumentDeduplicator.fingerprint(document)
         return repository.exists_by_fingerprint(document.fingerprint)

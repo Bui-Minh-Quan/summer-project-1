@@ -27,9 +27,9 @@ logger = logging.getLogger("main")
 def main():
     load_dotenv()
 
-    MONGO_URI = os.getenv("MONGO_URI")
-    FIREANT_TOKEN = os.getenv("Fire_Ant_Bearer")
-    KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
+    MONGO_URI = config.mongo_uri
+    FIREANT_BEARER = config.fire_ant_bearer
+    KAFKA_BROKER = config.kafka_broker
     DATABASE = "financial_ai"
 
     
@@ -44,7 +44,7 @@ def main():
     print(" 🚀 Financial AI Platform - Acquisition Module (With Kafka)")
     print("=" * 65)
 
-    connector = FireAntConnector(bearer_token=FIREANT_TOKEN)
+    connector = FireAntConnector(bearer_token=config.fire_ant_bearer)
     if not connector.health_check():
         logger.error("❌ FireAnt API is unreachable. Aborting.")
         sys.exit(1)
