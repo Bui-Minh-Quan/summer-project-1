@@ -1,21 +1,17 @@
-import os
-import sys
 import argparse
 import logging
-from datetime import datetime, timezone, timedelta
-from dotenv import load_dotenv
-
-from connectors.fireant import FireAntConnector
-from repository.mongodb import MongoRepository
-from publishers.kafka_publisher import KafkaDocumentPublisher
-from services.acquisition_service import AcquisitionService
-
-from preprocessing.cleaner import DocumentCleaner
-from preprocessing.validator import DocumentValidator
-from preprocessing.deduplicator import DocumentDeduplicator
+import sys
+from datetime import datetime, timedelta, timezone
 
 from config import config
-
+from connectors.fireant import FireAntConnector
+from dotenv import load_dotenv
+from preprocessing.cleaner import DocumentCleaner
+from preprocessing.deduplicator import DocumentDeduplicator
+from preprocessing.validator import DocumentValidator
+from publishers.kafka_publisher import KafkaDocumentPublisher
+from repository.mongodb import MongoRepository
+from services.acquisition_service import AcquisitionService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,10 +22,6 @@ logger = logging.getLogger("main")
 
 def main():
     load_dotenv()
-
-    MONGO_URI = os.getenv("MONGO_URI")
-    FIREANT_TOKEN = os.getenv("Fire_Ant_Bearer")
-    KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
     DATABASE = "financial_ai"
 
     
@@ -44,7 +36,7 @@ def main():
     print(" 🚀 Financial AI Platform - Acquisition Module (With Kafka)")
     print("=" * 65)
 
-    connector = FireAntConnector(bearer_token=FIREANT_TOKEN)
+    connector = FireAntConnector(bearer_token=config.fire_ant_bearer)
     if not connector.health_check():
         logger.error("❌ FireAnt API is unreachable. Aborting.")
         sys.exit(1)

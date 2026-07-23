@@ -1,7 +1,6 @@
-import logging 
-import json 
-from typing import Optional 
-from confluent_kafka import Producer, KafkaError 
+import logging
+
+from confluent_kafka import KafkaError, Producer
 from models.document import Document
 
 logger = logging.getLogger("kafka_publisher")
@@ -20,7 +19,7 @@ class KafkaDocumentPublisher:
         
         self.producer = Producer(self.conf)
     
-    def _delivery_callback(self, err: Optional[KafkaError], msg):
+    def _delivery_callback(self, err: KafkaError | None, msg):
         # Asynchronous callback triggered when broker
         # acknowledges a message
         if err is not None:
@@ -47,7 +46,7 @@ class KafkaDocumentPublisher:
 
             # Trigger network I/O events without blocking the main loop
             self.producer.poll(0)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Exception publishing document {document.id} to Kafka: {e}")
     
     def publish_batch(self, topic: str, documents: list[Document]) -> int:

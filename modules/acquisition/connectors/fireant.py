@@ -1,18 +1,17 @@
-import logging 
-import random 
+import logging
+import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any
 
-import requests 
-from dateutil import parser 
-from requests.adapters import HTTPAdapter 
+import requests
+from dateutil import parser
+from models.document import Document, DocumentType, Language, RawDocument
+from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from connectors.base import BaseConnector 
-from models.document import Document, RawDocument, DocumentType, Language 
-
+from connectors.base import BaseConnector
 
 logger = logging.getLogger("fireant_connector")
 
@@ -59,15 +58,15 @@ class FireAntConnector(BaseConnector):
         time.sleep(random.uniform(min_s, max_s))
 
     
-    def _get(self, url: str, params: Optional[Dict[str, Any]] = None) -> Optional[Any]:
+    def _get(self, url: str, params: dict[str, Any] | None = None) -> Any | None:
         # Wrapper for GET requests using the resilient session.
         try:
             response = self.session.get(url, params=params, timeout=15)
             if response.status_code == 200:
                 return response.json()
             logger.warning(f"HTTP {response.status_code} from {url} (params: {params})")
-        except Exception as e:
-            logger.error(f"Request failed for {url}: {str(e)}")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Request failed for {url}: {e!s}")
         return None
 
 
@@ -79,8 +78,8 @@ class FireAntConnector(BaseConnector):
         return isinstance(res, list) and len(res) > 0
     
     def fetch_latest_posts(
-            self, limit: int = 50, since_timestamp: Optional[datetime] = None
-    ) -> List[RawDocument]:
+            self, limit: int = 50, since_timestamp: datetime | None = None
+    ) -> list[RawDocument]:
         # Fetch newest social posts 
         # If since_timstamp is provided, it acts as a watermark and stops crawling
         # once older posts are reached 
@@ -93,8 +92,8 @@ class FireAntConnector(BaseConnector):
         )
     
     def fetch_latest_news(
-            self, limit: int = 50, since_timestamp: Optional[datetime] = None
-    ) -> List[RawDocument]:
+            self, limit: int = 50, since_timestamp: datetime | None = None
+    ) -> list[RawDocument]:
         # Fetch newest official news articles using multithread detail retrieval
         return self._crawl_feed(
             doc_type=DocumentType.NEWS,
@@ -104,7 +103,7 @@ class FireAntConnector(BaseConnector):
             watermark=since_timestamp
         )
 
-    def fetch_history(self, start_date: datetime, end_date: datetime) -> List[RawDocument]:
+    def fetch_history(self, start_date: datetime, end_date: datetime) -> list[RawDocument]:
         # Fetch all posts and news published within a specific historical time window.
         
         # Ensure UTC timezone awareness for accurate comparison
@@ -131,7 +130,7 @@ class FireAntConnector(BaseConnector):
 
         return posts + news 
     
-    def map_document(self, raw: RawDocument) -> Optional[Document]:
+    def map_document(self, raw: RawDocument) -> Document | None:
         try: 
             # 1. Access top-level attributes using dot notation
             doc_type = raw.document_type
@@ -184,8 +183,8 @@ class FireAntConnector(BaseConnector):
                 published_at=pub_date,
                 metadata=metadata
             )
-        except Exception as e:
-            logger.warning(f"Failed to map document {raw.id if hasattr(raw, 'id') else 'unknown'}: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Failed to map document: {e}")
             return None
         
     # Core crawling logic
@@ -193,16 +192,16 @@ class FireAntConnector(BaseConnector):
             self,
             doc_type: DocumentType,
             limit: int, 
-            start_date: Optional[datetime] = None,
-            end_date: Optional[datetime] = None,
-            watermark: Optional[datetime] = None
-    ) -> List[RawDocument]:
+            start_date: datetime | None = None,
+            end_date: datetime | None = None,
+            watermark: datetime | None = None
+    ) -> list[RawDocument]:
         # Unified pagination loop for both posts and news
         api_type = 1 if doc_type == DocumentType.NEWS else 0
         batch_size = 500 if doc_type == DocumentType.NEWS else 1000
 
         offset = 0
-        collected_docs: List[RawDocument] = []
+        collected_docs: list[RawDocument] = []
         terminated = False 
 
         if end_date:
@@ -273,13 +272,13 @@ class FireAntConnector(BaseConnector):
     
 
     def _fetch_news_details(
-            self, batch_meta: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+            self, batch_meta: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         # Fetch full news contents concurrently given a batch of list metadata
         posts_ids = [item["postID"] for item in batch_meta if "postID" in item]
         detailed_news = []
 
-        def _fetch_single(post_id: int) -> Optional[Dict[str, Any]]:
+        def _fetch_single(post_id: int) -> dict[str, Any] | None:
             time.sleep(random.uniform(0.05, 0.2))
             return self._get(f"{self.BASE_URL}/{post_id}")
         
@@ -291,8 +290,8 @@ class FireAntConnector(BaseConnector):
                     data = future.result()
                     if data:
                         detailed_news.append(data)
-                except Exception as e:
-                    logger.error(f"Error fetching news detail for ID {future_to_id[future]}: {e}")
+                except Exception as e:  # noqa: BLE001
+                    logger.error(f"Error fetching news detail: {e}")
         
         detailed_news.sort(
             key=lambda x: self._parse_date(x.get("date")) or datetime.min.replace(tzinfo=timezone.utc),
@@ -302,7 +301,7 @@ class FireAntConnector(BaseConnector):
     
     # Mapping and parsing logic 
     
-    def _parse_date(self, date_str: Optional[str]) -> Optional[datetime]:
+    def _parse_date(self, date_str: str | None) -> datetime | None:
         # Safely parse ISO date strings into UTC Datetime objects
         if not date_str:
             return None
@@ -313,10 +312,11 @@ class FireAntConnector(BaseConnector):
                 dt = dt.replace(tzinfo=timezone.utc)
             
             return dt.astimezone(timezone.utc)
-        except Exception:
+        except Exception as e: # noqa: BLE001
+            logger.error(f"Error: {e}")
             return None
     
-    def _probe_date(self, api_type: int, offset: int) -> Optional[datetime]:
+    def _probe_date(self, api_type: int, offset: int) -> datetime | None:
         # Lightweight probe that fetches a single item at a specific offset
         # to check its timestamp.
         res = self._get(self.BASE_URL, params={"type": api_type, "offset": offset, "limit": 1})
@@ -354,8 +354,7 @@ class FireAntConnector(BaseConnector):
         while low <= high:
             mid = ((low + high) // (2 * batch_size)) * batch_size
 
-            if mid < 0:
-                mid = 0
+            mid = max(mid, 0)
 
             self._polite_delay(0.1, 0.3)
             date_mid = self._probe_date(api_type, offset=mid)

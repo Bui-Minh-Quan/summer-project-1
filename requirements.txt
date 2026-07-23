@@ -1,0 +1,20 @@
+# Core Runtime Dependencies
+requests>=2.32.0
+urllib3>=2.2.0
+pydantic>=2.10.0
+python-dateutil>=2.9.0
+beautifulsoup4>=4.12.0
+lxml>=5.2.0
+pymongo>=4.10.0
+confluent-kafka>=2.8.0
+python-dotenv>=1.0.1
+colorlog>=6.9.0
+tenacity>=9.0.0
+tqdm>=4.67.0
+typing_extensions>=4.12.0
+pydantic_settings>=2.10.0
+
+# Quality & Testing Dependencies
+ruff>=0.9.0
+mypy>=1.14.0
+pytest>=8.3.0

@@ -1,19 +1,15 @@
 import logging
-import time 
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
-from pydantic import BaseModel
+import time
+from datetime import datetime
 
+from connectors.base import BaseConnector
+from models.document import Document, DocumentType, RawDocument
 from preprocessing.cleaner import DocumentCleaner
 from preprocessing.deduplicator import DocumentDeduplicator
 from preprocessing.validator import DocumentValidator
-
-from connectors.fireant import FireAntConnector
-from connectors.base import BaseConnector
-from repository.mongodb import MongoRepository
 from publishers.kafka_publisher import KafkaDocumentPublisher
-from models.document import Document, RawDocument, DocumentType
-
+from pydantic import BaseModel
+from repository.mongodb import MongoRepository
 
 logger = logging.getLogger("acquisition_service")
 
@@ -69,7 +65,7 @@ class AcquisitionService:
 
                 report.raw_saved += 1
             
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"Failed to archive raw doc {raw.id}: {e}")
 
         # 2. Map to Canonical Schema
@@ -83,6 +79,7 @@ class AcquisitionService:
         
         # 3. Clean, Validate and Deduplicate
         valid_docs: list[Document] = []
+        seen_in_batch: set[str] = set()
         for doc in cannonical_docs:
             # Validate 
             if not self.validator.validate(doc).valid: 
@@ -96,9 +93,13 @@ class AcquisitionService:
 
             deduped_doc = self.deduplicator.process(cleaned_doc)
 
-            if self.deduplicator.is_duplicate(deduped_doc, self.document_repository):
+            if (deduped_doc.fingerprint in seen_in_batch) or self.deduplicator.is_duplicate(deduped_doc, self.document_repository):
                 report.duplicates += 1
-                continue  
+                continue
+
+            if deduped_doc.fingerprint:
+                seen_in_batch.add(deduped_doc.fingerprint)
+
 
             valid_docs.append(deduped_doc)
         
@@ -126,7 +127,7 @@ class AcquisitionService:
 
     def run_continuous(self, interval_seconds: int = 300, batch_limit: int = 500):
         # Mode 2: Continuous streaming
-        logger.info(f"Starting continuous streaming mode")
+        logger.info("Starting continuous streaming mode")
         try: 
             while True:
                 logger.info("Starting new ingestion cycle")

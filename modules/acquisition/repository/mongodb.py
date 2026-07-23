@@ -2,26 +2,25 @@
 MongoDB implementation of the repository
 """
 
-from typing import Optional
-
 from datetime import datetime
-
-from pymongo import MongoClient, UpdateOne
-from pymongo.collection import Collection
-from pymongo.errors import BulkWriteError
+from typing import Any
 
 from models.document import Document
+from pymongo import MongoClient, UpdateOne
+from pymongo.collection import Collection
+from pymongo.database import Database
+from pymongo.errors import BulkWriteError
+
 from repository.base import BaseRepository
+
 
 class MongoRepository(BaseRepository):
     # MongoDB repository for Document objects
 
-    def __init__(self, uri: str, database: str = "financial_ai", collection: str = "raw_documents"):
-        self.client = MongoClient(uri)
-
-        self.db = self.client[database]
-        
-        self.collection: Collection = self.db[collection]
+    def __init__(self, uri: str, database: str = "financial_ai", collection: str = "raw_documents") -> None:
+        self.client: MongoClient[dict[str, Any]] = MongoClient(uri)
+        self.db: Database[dict[str, Any]] = self.client[database]
+        self.collection: Collection[dict[str, Any]] = self.db[collection]
 
         # Make document id unique
         self.collection.create_index("id", unique=True)
@@ -36,6 +35,8 @@ class MongoRepository(BaseRepository):
         self.collection.insert_one(
             document.model_dump(mode="json")
         )
+
+        return document.id
 
     def save_many(self, documents: list[Document]) -> int:
         """
@@ -68,7 +69,7 @@ class MongoRepository(BaseRepository):
             
             if real_errors:
                 # If a real database failure occurred (e.g., auth failure, disk full), crash loudly!
-                raise bwe
+                raise 
             
             # If all errors were just duplicate keys, gracefully extract the count of successful saves!
             successful_saves = bwe.details.get("nUpserted", 0) + bwe.details.get("nInserted", 0)
@@ -86,7 +87,7 @@ class MongoRepository(BaseRepository):
 
         return document.id
     
-    def find_by_id(self, document_id: str) -> Optional[Document]:
+    def find_by_id(self, document_id: str) -> Document | None:
         result = self.collection.find_one({"id": document_id})
 
         if result is None:
@@ -122,7 +123,7 @@ class MongoRepository(BaseRepository):
         return self.collection.count_documents({"fingerprint": fingerprint}, limit=1) > 0
     
 
-    def get_latest_timestamp(self, source: Optional[str] = None, doc_type: Optional[str] = None) -> Optional[datetime]:
+    def get_latest_timestamp(self, source: str | None = None, doc_type: str | None = None) -> datetime | None:
         query = {}
         if source:
             query["source"] = source 
