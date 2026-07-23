@@ -47,7 +47,7 @@ jobs:
       # 5. PHASE 3 CLOUD GATE: Type Checking
       - name: Run Mypy Static Type Checking
         run: |
-          mypy modules/acquisition/ --ignore-missing-imports
+          mypy modules/acquisition/ --ignore-missing-imports --explicit-package-bases
 
       # 6. PHASE 2 CLOUD GATE: Execute Automated Test Suites
       - name: Run Unit, Integration & E2E Tests with Pytest
