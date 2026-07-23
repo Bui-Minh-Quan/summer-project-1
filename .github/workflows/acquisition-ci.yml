@@ -1,0 +1,62 @@
+name: Acquisition Module CI Pipeline
+
+# Trigger this cloud pipeline on every push or PR targeting the main branch
+on:
+  push:
+    branches: [ main, feature/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+
+    # Ephemeral service containers needed for Layer 2 & Layer 3 tests!
+    services:
+      mongodb:
+        image: mongo:7.0  # Use MongoDB 7.0 to guarantee smooth Linux kernel compatibility
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_ROOT_USERNAME: admin
+          MONGO_INITDB_ROOT_PASSWORD: secretpassword
+
+    steps:
+      # 1. Check out your code onto the GitHub Ubuntu runner
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      # 2. Setup Python environment
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'  # Caches pip dependencies to make future runs lightning fast!
+
+      # 3. Install required packages
+      - name: Install Platform Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest ruff mypy pydantic pymongo confluent-kafka python-dateutil beautifulsoup4 requests pydantic-settings
+
+      # 4. PHASE 3 CLOUD GATE: Linting
+      - name: Run Ruff Code Linter
+        run: |
+          ruff check modules/acquisition/
+
+      # 5. PHASE 3 CLOUD GATE: Type Checking
+      - name: Run Mypy Static Type Checking
+        run: |
+          mypy modules/acquisition/ --ignore-missing-imports
+
+      # 6. PHASE 2 CLOUD GATE: Execute Automated Test Suites
+      - name: Run Unit, Integration & E2E Tests with Pytest
+        env:
+          # Pass temporary test environment variables to the runner
+          MONGO_URI: mongodb://admin:secretpassword@localhost:27017/?authSource=admin
+          KAFKA_BROKER: localhost:9092
+          Fire_Ant_Bearer: fake_token_for_ci
+        run: |
+          # We navigate into the module so pytest uses our local pytest.ini
+          cd modules/acquisition
+          pytest tests/ -v
