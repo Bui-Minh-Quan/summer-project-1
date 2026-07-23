@@ -1,6 +1,8 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 from models.document import Document, DocumentType, Language
 from preprocessing.validator import DocumentValidator
+
 
 def test_news_missing_title():
     validator = DocumentValidator()

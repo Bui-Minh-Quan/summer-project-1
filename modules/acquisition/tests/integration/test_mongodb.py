@@ -1,6 +1,7 @@
 from models.document import Document, DocumentType, Language
 from repository.mongodb import MongoRepository
 
+
 def test_save_and_find_by_id(mongo_repo: MongoRepository):
     # 1. Create a sample document
     doc = Document(

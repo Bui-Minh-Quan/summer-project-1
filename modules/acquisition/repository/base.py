@@ -2,9 +2,10 @@
 Abstract repository interface
 """
 
-from abc import ABC, abstractmethod 
+from abc import ABC, abstractmethod
 
 from models.document import Document
+
 
 class BaseRepository(ABC):
     # Abstract repository interface

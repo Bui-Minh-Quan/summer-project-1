@@ -5,16 +5,16 @@ Every data source connector must inherit from BaseConnector
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime 
+from datetime import datetime
 
 from models.document import RawDocument
+
 
 class BaseConnector(ABC):
     @property
     @abstractmethod
     def source_name(self) -> str:
         """Return unique source identifier (e.g., 'fireant', 'vnexpress')"""
-        pass
     
     @abstractmethod
     def fetch_latest_news(self, limit: int = 50) -> list[RawDocument]:

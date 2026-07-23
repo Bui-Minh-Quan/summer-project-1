@@ -1,12 +1,14 @@
-from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
+
+from connectors.fireant import FireAntConnector
 from preprocessing.cleaner import DocumentCleaner
 from preprocessing.deduplicator import DocumentDeduplicator
 from preprocessing.validator import DocumentValidator
-from connectors.fireant import FireAntConnector
 from repository.mongodb import MongoRepository
 from services.acquisition_service import AcquisitionService
 from tests.fixtures.factories import generate_fireant_batch
+
 
 def test_e2e_historical_backfill_execution(mongo_repo, kafka_publisher):
     """

@@ -1,11 +1,13 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+from connectors.fireant import FireAntConnector
 from preprocessing.cleaner import DocumentCleaner
 from preprocessing.deduplicator import DocumentDeduplicator
 from preprocessing.validator import DocumentValidator
-from connectors.fireant import FireAntConnector
 from repository.mongodb import MongoRepository
 from services.acquisition_service import AcquisitionService
 from tests.fixtures.factories import generate_fireant_batch
+
 
 def test_e2e_continuous_streaming_with_api_resilience(mongo_repo, kafka_publisher):
     """
@@ -61,7 +63,6 @@ def test_e2e_continuous_streaming_with_api_resilience(mongo_repo, kafka_publishe
         def mock_sleep_router(seconds):
             if seconds >= 300:
                 raise KeyboardInterrupt("Simulated Ctrl+C at end of Cycle 1")
-            return None  # For polite delays (0.1s - 0.8s), just ignore and continue instantly!
 
         with patch("requests.Session.get", side_effect=flaky_server_router), \
                 patch("time.sleep", side_effect=mock_sleep_router):

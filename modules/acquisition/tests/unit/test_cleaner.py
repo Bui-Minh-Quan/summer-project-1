@@ -1,5 +1,6 @@
-from models.document import Document, DocumentType, Language 
+from models.document import Document, DocumentType, Language
 from preprocessing.cleaner import DocumentCleaner
+
 
 def test_cleaner_strips_html_tags():
     cleaner = DocumentCleaner()

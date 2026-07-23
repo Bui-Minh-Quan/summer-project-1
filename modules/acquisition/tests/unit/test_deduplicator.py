@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
+
 from models.document import Document, DocumentType
 from preprocessing.deduplicator import DocumentDeduplicator
+
 
 def test_fingerprint_is_deterministic():
     deduplicator = DocumentDeduplicator()

@@ -1,13 +1,13 @@
 from datetime import datetime, timezone
-from models.document import RawDocument, DocumentType
-from conftest import TEST_MONGO_URI, TEST_DATABASE
+
+from conftest import TEST_DATABASE, TEST_MONGO_URI
+from connectors.fireant import FireAntConnector
+from models.document import DocumentType, RawDocument
 from preprocessing.cleaner import DocumentCleaner
 from preprocessing.deduplicator import DocumentDeduplicator
 from preprocessing.validator import DocumentValidator
-from connectors.fireant import FireAntConnector
 from repository.mongodb import MongoRepository
 from services.acquisition_service import AcquisitionService
-
 
 
 def test_full_acquisition_pipeline_flow_1(mongo_repo, kafka_publisher):

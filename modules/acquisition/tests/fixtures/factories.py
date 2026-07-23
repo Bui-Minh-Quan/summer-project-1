@@ -1,5 +1,6 @@
-from datetime import datetime, timezone, timedelta
 import random
+from datetime import datetime, timedelta, timezone
+
 
 def generate_fireant_batch(count: int, is_news: bool = False, start_id: int = 1000, base_time: datetime | None = None) -> list[dict]:
     """

@@ -1,6 +1,7 @@
 from models.document import Document, DocumentType
 from publishers.kafka_publisher import KafkaDocumentPublisher
 
+
 def test_publish_batch_to_broker(kafka_publisher: KafkaDocumentPublisher):
     doc1 = Document(
         id="kafka_test_1",

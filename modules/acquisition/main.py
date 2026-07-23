@@ -1,20 +1,17 @@
-import sys
 import argparse
 import logging
-from datetime import datetime, timezone, timedelta
-from dotenv import load_dotenv
-
-from connectors.fireant import FireAntConnector
-from repository.mongodb import MongoRepository
-from publishers.kafka_publisher import KafkaDocumentPublisher
-from services.acquisition_service import AcquisitionService
-
-from preprocessing.cleaner import DocumentCleaner
-from preprocessing.validator import DocumentValidator
-from preprocessing.deduplicator import DocumentDeduplicator
+import sys
+from datetime import datetime, timedelta, timezone
 
 from config import config
-
+from connectors.fireant import FireAntConnector
+from dotenv import load_dotenv
+from preprocessing.cleaner import DocumentCleaner
+from preprocessing.deduplicator import DocumentDeduplicator
+from preprocessing.validator import DocumentValidator
+from publishers.kafka_publisher import KafkaDocumentPublisher
+from repository.mongodb import MongoRepository
+from services.acquisition_service import AcquisitionService
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from models.document import Document, Language, DocumentType
+from typing import ClassVar
+
+from models.document import Document, DocumentType, Language
+
 
 @dataclass
 class ValidationResult:
@@ -8,7 +11,7 @@ class ValidationResult:
     errors: list[str]
 
 class DocumentValidator:
-    REQUIRED_FIELDS = ["title", "content", "source"]
+    REQUIRED_FIELDS: ClassVar[list[str]] = ["title", "content", "source"]
 
     def validate(self, document: Document) -> ValidationResult:
         errors = []
@@ -21,12 +24,11 @@ class DocumentValidator:
             errors.append("Missing content.")
 
         if not document.source:
-            errors.append("Missing source.")  # Fixed: Mssing -> Missing
+            errors.append("Missing source.") 
         
         # Date
-        if document.published_at:
-            if document.published_at > datetime.now(timezone.utc):
-                errors.append("Publication date is in the future.") # Fixed: appen -> append
+        if document.published_at and document.published_at > datetime.now(timezone.utc):
+            errors.append("Publication date is in the future.")
         
         # Language
         if document.language.value not in {Language.VI.value, Language.EN.value, Language.UNKNOWN.value}:

@@ -1,17 +1,15 @@
 import logging
-import time 
+import time
 from datetime import datetime
-from pydantic import BaseModel
 
+from connectors.base import BaseConnector
+from models.document import Document, DocumentType, RawDocument
 from preprocessing.cleaner import DocumentCleaner
 from preprocessing.deduplicator import DocumentDeduplicator
 from preprocessing.validator import DocumentValidator
-
-from connectors.base import BaseConnector
-from repository.mongodb import MongoRepository
 from publishers.kafka_publisher import KafkaDocumentPublisher
-from models.document import Document, RawDocument, DocumentType
-
+from pydantic import BaseModel
+from repository.mongodb import MongoRepository
 
 logger = logging.getLogger("acquisition_service")
 
@@ -67,7 +65,7 @@ class AcquisitionService:
 
                 report.raw_saved += 1
             
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"Failed to archive raw doc {raw.id}: {e}")
 
         # 2. Map to Canonical Schema

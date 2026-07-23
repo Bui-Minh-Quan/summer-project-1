@@ -1,6 +1,8 @@
 import hashlib
+
 from models.document import Document
 from repository.mongodb import MongoRepository
+
 
 class DocumentDeduplicator:
     """Computes deterministic document fingerprints and manages deduplication."""

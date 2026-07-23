@@ -1,6 +1,6 @@
 import pytest
-from repository.mongodb import MongoRepository
 from publishers.kafka_publisher import KafkaDocumentPublisher
+from repository.mongodb import MongoRepository
 
 TEST_MONGO_URI = "mongodb://admin:secretpassword@localhost:27017/?authSource=admin"
 TEST_DATABASE = "financial_ai_test" 
