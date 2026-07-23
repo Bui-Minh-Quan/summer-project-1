@@ -7,8 +7,12 @@ class DocumentDeduplicator:
 
     @staticmethod
     def fingerprint(document: Document) -> str:
-        # Create a deterministic string from title and source
-        text = (document.title or "") + "|" + (document.source or "")
+        # Include title, content, and source to guarantee uniqueness!
+        title_part = document.title or ""
+        content_part = document.content or ""
+        source_part = document.source or ""
+        
+        text = f"{title_part}|{content_part}|{source_part}"
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
     
     def process(self, document: Document) -> Document:

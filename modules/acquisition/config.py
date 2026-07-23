@@ -1,15 +1,23 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
+from pydantic import Field
 
 class AcquisitionConfig(BaseSettings):
-    mongo_uri: str 
-    fire_ant_bearer: str 
-    kafka_broker: str = "localhost: 9092"
-    database_name: str = "financial_ai"
-    kafka_topic: str = "textual-documents"
+    mongo_uri: str = Field(
+        default="mongodb://admin:secretpassword@localhost:27017/?authSource=admin",
+        alias="MONGO_URI"
+    )
+    fire_ant_bearer: str = Field(
+        default="",
+        alias="FIRE_ANT_BEARER"
+    )
+    kafka_broker: str = Field(
+        default="localhost:9092",
+        alias="KAFKA_BROKER"
+    )
 
-    model_config = SettingsConfigDict(env_file=".env", 
-                                      env_file_encoding="utf-8",
-                                      extra="ignore")
+    class Config:
+        env_file = ".env"
+        extra = "ignore"
 
-# Global config instance
+# Line 15 instantiation:
 config = AcquisitionConfig()

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from models.document import Document, RawDocument, DocumentType, Language
+from models.document import RawDocument, DocumentType
 from connectors.fireant import FireAntConnector
 
 def test_map_document_extracts_correct_fields():

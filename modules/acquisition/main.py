@@ -1,4 +1,3 @@
-import os
 import sys
 import argparse
 import logging
@@ -26,10 +25,6 @@ logger = logging.getLogger("main")
 
 def main():
     load_dotenv()
-
-    MONGO_URI = config.mongo_uri
-    FIREANT_BEARER = config.fire_ant_bearer
-    KAFKA_BROKER = config.kafka_broker
     DATABASE = "financial_ai"
 
     

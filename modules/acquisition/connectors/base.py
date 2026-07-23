@@ -7,7 +7,7 @@ Every data source connector must inherit from BaseConnector
 from abc import ABC, abstractmethod
 from datetime import datetime 
 
-from models.document import Document, RawDocument
+from models.document import RawDocument
 
 class BaseConnector(ABC):
     @property

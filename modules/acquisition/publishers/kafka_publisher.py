@@ -1,5 +1,4 @@
 import logging 
-import json 
 from typing import Optional 
 from confluent_kafka import Producer, KafkaError 
 from models.document import Document

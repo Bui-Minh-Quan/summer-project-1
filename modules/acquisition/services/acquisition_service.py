@@ -1,14 +1,12 @@
 import logging
 import time 
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Any
+from datetime import datetime
 from pydantic import BaseModel
 
 from preprocessing.cleaner import DocumentCleaner
 from preprocessing.deduplicator import DocumentDeduplicator
 from preprocessing.validator import DocumentValidator
 
-from connectors.fireant import FireAntConnector
 from connectors.base import BaseConnector
 from repository.mongodb import MongoRepository
 from publishers.kafka_publisher import KafkaDocumentPublisher
@@ -131,7 +129,7 @@ class AcquisitionService:
 
     def run_continuous(self, interval_seconds: int = 300, batch_limit: int = 500):
         # Mode 2: Continuous streaming
-        logger.info(f"Starting continuous streaming mode")
+        logger.info("Starting continuous streaming mode")
         try: 
             while True:
                 logger.info("Starting new ingestion cycle")

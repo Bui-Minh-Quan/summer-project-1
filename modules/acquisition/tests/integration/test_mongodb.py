@@ -25,7 +25,6 @@ def test_save_and_find_by_id(mongo_repo: MongoRepository):
 
 def test_swallow_duplicate_fingerprint(mongo_repo: MongoRepository):
     # 1. Create sample documents
-
     doc1 = Document(
         id="batch_1",
         source="fireant",
