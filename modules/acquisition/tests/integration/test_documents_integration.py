@@ -2,12 +2,98 @@ from datetime import datetime, timezone
 
 from conftest import TEST_DATABASE, TEST_MONGO_URI
 from connectors.fireant import FireAntConnector
-from models.document import DocumentType, RawDocument
-from preprocessing.cleaner import DocumentCleaner
-from preprocessing.deduplicator import DocumentDeduplicator
-from preprocessing.validator import DocumentValidator
+from models.document import Document, DocumentType, Language, RawDocument
+from preprocessing.documents_preprocessing import (
+    DocumentCleaner,
+    DocumentDeduplicator,
+    DocumentValidator,
+)
+from publishers.kafka_publisher import KafkaDocumentPublisher
 from repository.mongodb import MongoRepository
-from services.acquisition_service import AcquisitionService
+from services.documents_service import AcquisitionService
+
+
+def test_publish_batch_to_broker(kafka_publisher: KafkaDocumentPublisher):
+    doc1 = Document(
+        id="kafka_test_1",
+        source="fireant",
+        document_type=DocumentType.NEWS,
+        content="Kafka test document 1",
+    )
+
+    doc2 = Document(
+        id="kafka_test_2",
+        source="fireant",
+        document_type=DocumentType.POST,
+        content="Kafka test document 2",
+    )
+
+    # Send across TCP socket to localhost:9092 (Kafka broker)
+    published_count = kafka_publisher.publish_batch(
+        topic="test-integration-topic", documents=[doc1, doc2]
+    )
+
+    assert published_count == 2
+
+
+
+
+
+def test_save_and_find_by_id(mongo_repo: MongoRepository):
+    # 1. Create a sample document
+    doc = Document(
+        id="test_doc_1",
+        source="fireant",
+        document_type=DocumentType.NEWS,
+        title="Test Document",
+        content="This is a test document.",
+        language=Language.VI
+    )
+
+    # 2. Save the document to MongoDB
+    mongo_repo.save(doc)
+
+    # 3. Query the document by its ID
+    retrieved_doc = mongo_repo.find_by_id("test_doc_1")
+
+    assert retrieved_doc is not None
+    assert retrieved_doc.id == doc.id
+    assert retrieved_doc.title == doc.title
+
+
+def test_swallow_duplicate_fingerprint(mongo_repo: MongoRepository):
+    # 1. Create sample documents
+    doc1 = Document(
+        id="batch_1",
+        source="fireant",
+        document_type=DocumentType.NEWS,
+        title="Duplicate Fingerprint Test",
+        content="contentA",
+        fingerprint="fingerprint123",
+        language=Language.VI
+    )
+
+    # doc2 with a different ID but the same fingerprint as doc1
+    doc2 = Document(
+        id="batch_2",
+        source="fireant",
+        document_type=DocumentType.NEWS,
+        title="Duplicate Fingerprint Test",
+        content="contentB",
+        fingerprint="fingerprint123",  # Same fingerprint as doc1
+        language=Language.VI
+    )
+
+    # 2. Save both documents to MongoDB
+    saved_count = mongo_repo.save_many([doc1, doc2])
+
+    # 3. Only one document should be saved due to the duplicate fingerprint
+    assert mongo_repo.count() == 1
+    assert saved_count == 1
+
+
+
+
 
 
 def test_full_acquisition_pipeline_flow_1(mongo_repo, kafka_publisher):

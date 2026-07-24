@@ -6,12 +6,14 @@ from datetime import datetime, timedelta, timezone
 from config import config
 from connectors.fireant import FireAntConnector
 from dotenv import load_dotenv
-from preprocessing.cleaner import DocumentCleaner
-from preprocessing.deduplicator import DocumentDeduplicator
-from preprocessing.validator import DocumentValidator
+from preprocessing.documents_preprocessing import (
+    DocumentCleaner,
+    DocumentDeduplicator,
+    DocumentValidator,
+)
 from publishers.kafka_publisher import KafkaDocumentPublisher
 from repository.mongodb import MongoRepository
-from services.acquisition_service import AcquisitionService
+from services.documents_service import AcquisitionService
 
 logging.basicConfig(
     level=logging.INFO,
