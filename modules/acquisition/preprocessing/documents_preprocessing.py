@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import ClassVar
 
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
-
 from models.document import Document, DocumentType, Language
 from repository.mongodb import MongoRepository
 

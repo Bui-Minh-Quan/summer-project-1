@@ -3,10 +3,9 @@ import logging
 import sys
 from datetime import datetime, timedelta, timezone
 
-from dotenv import load_dotenv
-
 from config import config
 from connectors.fireant import FireAntConnector
+from dotenv import load_dotenv
 from preprocessing.documents_preprocessing import (
     DocumentCleaner,
     DocumentDeduplicator,

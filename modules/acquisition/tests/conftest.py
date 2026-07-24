@@ -1,5 +1,4 @@
 import pytest
-
 from publishers.kafka_publisher import KafkaDocumentPublisher
 from repository.mongodb import MongoRepository
 

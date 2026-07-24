@@ -7,11 +7,11 @@ from typing import Any
 
 import requests
 from dateutil import parser
+from models.document import Document, DocumentType, Language, RawDocument
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from connectors.base import BaseConnector
-from models.document import Document, DocumentType, Language, RawDocument
 
 logger = logging.getLogger("fireant_connector")
 

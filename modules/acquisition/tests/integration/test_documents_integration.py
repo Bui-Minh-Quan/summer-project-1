@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
 from conftest import TEST_DATABASE, TEST_MONGO_URI
-
 from connectors.fireant import FireAntConnector
 from models.document import Document, DocumentType, Language, RawDocument
 from preprocessing.documents_preprocessing import (

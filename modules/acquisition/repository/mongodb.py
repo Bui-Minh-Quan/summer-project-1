@@ -5,12 +5,12 @@ MongoDB implementation of the repository
 from datetime import datetime
 from typing import Any
 
+from models.document import Document
 from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import BulkWriteError
 
-from models.document import Document
 from repository.base import BaseRepository
 
 
