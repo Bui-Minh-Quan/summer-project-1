@@ -1,6 +1,7 @@
 import logging
 
 from confluent_kafka import KafkaError, Producer
+
 from models.document import Document
 
 logger = logging.getLogger("kafka_publisher")

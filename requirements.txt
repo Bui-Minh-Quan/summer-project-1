@@ -14,6 +14,12 @@ tqdm>=4.67.0
 typing_extensions>=4.12.0
 pydantic_settings>=2.10.0
 
+# Quantitative & Market Data Dependencies
+vnstock>=4.0.0
+pandas>=2.0.0
+numpy>=2.0.0
+openpyxl>=3.1.0
+
 # Quality & Testing Dependencies
 ruff>=0.9.0
 mypy>=1.14.0

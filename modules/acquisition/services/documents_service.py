@@ -2,13 +2,16 @@ import logging
 import time
 from datetime import datetime
 
+from pydantic import BaseModel
+
 from connectors.base import BaseConnector
 from models.document import Document, DocumentType, RawDocument
-from preprocessing.cleaner import DocumentCleaner
-from preprocessing.deduplicator import DocumentDeduplicator
-from preprocessing.validator import DocumentValidator
+from preprocessing.documents_preprocessing import (
+    DocumentCleaner,
+    DocumentDeduplicator,
+    DocumentValidator,
+)
 from publishers.kafka_publisher import KafkaDocumentPublisher
-from pydantic import BaseModel
 from repository.mongodb import MongoRepository
 
 logger = logging.getLogger("acquisition_service")

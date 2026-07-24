@@ -7,11 +7,11 @@ from typing import Any
 
 import requests
 from dateutil import parser
-from models.document import Document, DocumentType, Language, RawDocument
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from connectors.base import BaseConnector
+from models.document import Document, DocumentType, Language, RawDocument
 
 logger = logging.getLogger("fireant_connector")
 
@@ -129,6 +129,17 @@ class FireAntConnector(BaseConnector):
         )
 
         return posts + news 
+
+    def fetch_latest(self, limit: int = 50, doc_type: str = "all", **kwargs: Any) -> list[RawDocument]:
+        if doc_type == 'news':
+            return self.fetch_latest_news(limit=limit)
+        if doc_type == 'posts':
+            return self.fetch_latest_posts(limit=limit)
+
+        half = max(1, limit // 2)
+        return self.fetch_latest_news(limit=half) + self.fetch_latest_posts(limit=half)
+
+        
     
     def map_document(self, raw: RawDocument) -> Document | None:
         try: 
