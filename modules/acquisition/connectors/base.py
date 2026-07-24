@@ -1,24 +1,14 @@
-""" 
-Abstract connector interface.
-
-Every data source connector must inherit from BaseConnector
-"""
-
-from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Any, Generic, TypeVar
-
-T = TypeVar("T")
-
 """
 Abstract connector interface.
 
 Every data source connector must inherit from BaseConnector and define its payload type.
 """
 
-from typing import TypeVar
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Any, Generic, TypeVar
 
-# T represents the Bronze-layer raw payload model (e.g., RawDocument or RawMarketQuote)
+# T MUST be defined at the root module level (no indentation!)
 T = TypeVar("T")
 
 
