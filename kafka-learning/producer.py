@@ -1,7 +1,8 @@
-from confluent_kafka import Producer
+import json
 import random
 import uuid
-import json
+
+from confluent_kafka import Producer
 
 producer = Producer({
     "bootstrap.servers": "localhost:9092"

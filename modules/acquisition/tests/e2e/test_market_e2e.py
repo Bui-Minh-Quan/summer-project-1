@@ -22,12 +22,12 @@ def test_e2e_market_backfill_workflow(mongo_repo, kafka_publisher) -> None:
         connector=mock_connector,
         repository=mongo_repo,
         publisher=kafka_publisher,
-        kafka_topic="e2e-market-backfill-topic"
+        kafka_topic="e2e-market-backfill-topic",
     )
 
     report = service.run_backfill(
         start_date=datetime.now(timezone.utc) - timedelta(days=30),
-        end_date=datetime.now(timezone.utc)
+        end_date=datetime.now(timezone.utc),
     )
 
     assert report.stored == 9
@@ -48,7 +48,7 @@ def test_e2e_market_continuous_streaming_workflow(mongo_repo, kafka_publisher) -
         connector=mock_connector,
         repository=mongo_repo,
         publisher=kafka_publisher,
-        kafka_topic="e2e-market-stream-topic"
+        kafka_topic="e2e-market-stream-topic",
     )
 
     # Unconditionally raise KeyboardInterrupt whenever time.sleep is called

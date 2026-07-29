@@ -8,12 +8,12 @@ from preprocessing.documents_preprocessing import (
     DocumentDeduplicator,
     DocumentValidator,
 )
-from publishers.kafka_publisher import KafkaDocumentPublisher
+from publishers.kafka_publisher import KafkaPublisher
 from repository.mongodb import MongoRepository
 from services.documents_service import AcquisitionService
 
 
-def test_publish_batch_to_broker(kafka_publisher: KafkaDocumentPublisher):
+def test_publish_batch_to_broker(kafka_publisher: KafkaPublisher):
     doc1 = Document(
         id="kafka_test_1",
         source="fireant",
@@ -30,13 +30,10 @@ def test_publish_batch_to_broker(kafka_publisher: KafkaDocumentPublisher):
 
     # Send across TCP socket to localhost:9092 (Kafka broker)
     published_count = kafka_publisher.publish_batch(
-        topic="test-integration-topic", documents=[doc1, doc2]
+        topic="test-integration-topic", entities=[doc1, doc2]
     )
 
     assert published_count == 2
-
-
-
 
 
 def test_save_and_find_by_id(mongo_repo: MongoRepository):
@@ -47,7 +44,7 @@ def test_save_and_find_by_id(mongo_repo: MongoRepository):
         document_type=DocumentType.NEWS,
         title="Test Document",
         content="This is a test document.",
-        language=Language.VI
+        language=Language.VI,
     )
 
     # 2. Save the document to MongoDB
@@ -70,7 +67,7 @@ def test_swallow_duplicate_fingerprint(mongo_repo: MongoRepository):
         title="Duplicate Fingerprint Test",
         content="contentA",
         fingerprint="fingerprint123",
-        language=Language.VI
+        language=Language.VI,
     )
 
     # doc2 with a different ID but the same fingerprint as doc1
@@ -81,7 +78,7 @@ def test_swallow_duplicate_fingerprint(mongo_repo: MongoRepository):
         title="Duplicate Fingerprint Test",
         content="contentB",
         fingerprint="fingerprint123",  # Same fingerprint as doc1
-        language=Language.VI
+        language=Language.VI,
     )
 
     # 2. Save both documents to MongoDB
@@ -90,10 +87,6 @@ def test_swallow_duplicate_fingerprint(mongo_repo: MongoRepository):
     # 3. Only one document should be saved due to the duplicate fingerprint
     assert mongo_repo.count() == 1
     assert saved_count == 1
-
-
-
-
 
 
 def test_full_acquisition_pipeline_flow_1(mongo_repo, kafka_publisher):
@@ -106,9 +99,7 @@ def test_full_acquisition_pipeline_flow_1(mongo_repo, kafka_publisher):
     """
     # 1. Setup a temporary Bronze repository for raw documents
     raw_repo = MongoRepository(
-        uri=TEST_MONGO_URI,
-        database=TEST_DATABASE,
-        collection="test_raw_documents"
+        uri=TEST_MONGO_URI, database=TEST_DATABASE, collection="test_raw_documents"
     )
     raw_repo.clear()  # Clean slate
 
@@ -121,34 +112,66 @@ def test_full_acquisition_pipeline_flow_1(mongo_repo, kafka_publisher):
         validator=DocumentValidator(),
         deduplicator=DocumentDeduplicator(),
         publisher=kafka_publisher,
-        kafka_topic="test-pipeline-stream"
+        kafka_topic="test-pipeline-stream",
     )
 
     # 3. Create 4 raw test payloads
     now = datetime.now(timezone.utc).isoformat()
-    
+
     # Doc A: Valid News with HTML
     doc_a = RawDocument(
-        id="pipe_1", source="fireant", document_type=DocumentType.NEWS, fetched_at=datetime.now(timezone.utc),
-        payload={"postID": "pipe_1", "title": "Market Surge", "content": "<p>VN-Index <b>tăng</b> mạnh.</p>", "date": now}
+        id="pipe_1",
+        source="fireant",
+        document_type=DocumentType.NEWS,
+        fetched_at=datetime.now(timezone.utc),
+        payload={
+            "postID": "pipe_1",
+            "title": "Market Surge",
+            "content": "<p>VN-Index <b>tăng</b> mạnh.</p>",
+            "date": now,
+        },
     )
-    
+
     # Doc B: Valid Post
     doc_b = RawDocument(
-        id="pipe_2", source="fireant", document_type=DocumentType.POST, fetched_at=datetime.now(timezone.utc),
-        payload={"postID": "pipe_2", "title": "Good stock!", "content": "Buying more VIC today.", "date": now}
+        id="pipe_2",
+        source="fireant",
+        document_type=DocumentType.POST,
+        fetched_at=datetime.now(timezone.utc),
+        payload={
+            "postID": "pipe_2",
+            "title": "Good stock!",
+            "content": "Buying more VIC today.",
+            "date": now,
+        },
     )
-    
+
     # Doc C: Duplicate of Doc A (Same title and source!)
     doc_c = RawDocument(
-        id="pipe_3", source="fireant", document_type=DocumentType.NEWS, fetched_at=datetime.now(timezone.utc),
-        payload={"postID": "pipe_3", "title": "Market Surge", "content": "<p>VN-Index <b>tăng</b> mạnh.</p>", "date": now}
+        id="pipe_3",
+        source="fireant",
+        document_type=DocumentType.NEWS,
+        fetched_at=datetime.now(timezone.utc),
+        payload={
+            "postID": "pipe_3",
+            "title": "Market Surge",
+            "content": "<p>VN-Index <b>tăng</b> mạnh.</p>",
+            "date": now,
+        },
     )
-    
+
     # Doc D: Invalid News (Missing Title!)
     doc_d = RawDocument(
-        id="pipe_4", source="fireant", document_type=DocumentType.NEWS, fetched_at=datetime.now(timezone.utc),
-        payload={"postID": "pipe_4", "title": None, "content": "This news has no headline.", "date": now}
+        id="pipe_4",
+        source="fireant",
+        document_type=DocumentType.NEWS,
+        fetched_at=datetime.now(timezone.utc),
+        payload={
+            "postID": "pipe_4",
+            "title": None,
+            "content": "This news has no headline.",
+            "date": now,
+        },
     )
 
     try:
@@ -157,40 +180,41 @@ def test_full_acquisition_pipeline_flow_1(mongo_repo, kafka_publisher):
 
         # 5. ASSERTIONS: Verify every metric on the pipeline report
         assert report.fetched == 4
-        assert report.raw_saved == 4       # All 4 landed in Bronze Mongo
-        assert report.mapped == 4          # All 4 successfully mapped to Document schema
-        assert report.invalid == 1         # Doc D failed validation
-        assert report.duplicates == 1      # Doc C failed deduplication
-        assert report.cleaned == 3         # Docs A, B, and C went through cleaner
-        assert report.stored == 2          # Only Docs A and B saved to Silver Mongo
-        assert report.published == 2       # Only Docs A and B streamed to Kafka
+        assert report.raw_saved == 4  # All 4 landed in Bronze Mongo
+        assert report.mapped == 4  # All 4 successfully mapped to Document schema
+        assert report.invalid == 1  # Doc D failed validation
+        assert report.duplicates == 1  # Doc C failed deduplication
+        assert report.cleaned == 3  # Docs A, B, and C went through cleaner
+        assert report.stored == 2  # Only Docs A and B saved to Silver Mongo
+        assert report.published == 2  # Only Docs A and B streamed to Kafka
 
         # 6. Verify actual database state
-        assert raw_repo.count() == 4       # Bronze DB actually holds 4 records
-        assert mongo_repo.count() == 2     # Silver DB actually holds 2 records
-        
+        assert raw_repo.count() == 4  # Bronze DB actually holds 4 records
+        assert mongo_repo.count() == 2  # Silver DB actually holds 2 records
+
         # Verify that HTML cleaning actually happened in the Silver DB
         saved_doc_a = mongo_repo.find_by_id("pipe_1")
-        assert saved_doc_a.content == "VN-Index tăng mạnh."  # <p> and <b> tags stripped!
+        assert (
+            saved_doc_a.content == "VN-Index tăng mạnh."
+        )  # <p> and <b> tags stripped!
 
     finally:
         # Teardown the temporary raw collection
         raw_repo.clear()
         raw_repo.close()
 
-def test_full_acquisition_pipeline_flow_2(mongo_repo, kafka_publisher): 
-    """ 
+
+def test_full_acquisition_pipeline_flow_2(mongo_repo, kafka_publisher):
+    """
     Feeds 3 raw identical payloads into the AcquisitionService and verifies that:
     - All 3 are archived to the Bronze Lake (raw_repository).
     - 2 are dropped by deduplication (duplicate content).
     - Exactly 1 clean, unique document lands in Silver Mongo and Kafka!
     """
 
-    # 1. Setup 
+    # 1. Setup
     raw_repo = MongoRepository(
-        uri=TEST_MONGO_URI,
-        database=TEST_DATABASE,
-        collection="test_raw_documents"
+        uri=TEST_MONGO_URI, database=TEST_DATABASE, collection="test_raw_documents"
     )
 
     raw_repo.clear()  # Clean slate
@@ -203,7 +227,7 @@ def test_full_acquisition_pipeline_flow_2(mongo_repo, kafka_publisher):
         validator=DocumentValidator(),
         deduplicator=DocumentDeduplicator(),
         publisher=kafka_publisher,
-        kafka_topic="test-pipeline-stream"
+        kafka_topic="test-pipeline-stream",
     )
 
     # 2. Create 3 identical raw test payloads
@@ -212,13 +236,31 @@ def test_full_acquisition_pipeline_flow_2(mongo_repo, kafka_publisher):
         "postID": "pipe_5",
         "title": "Duplicate Test",
         "content": "<p>This is a duplicate test.</p>",
-        "date": now
+        "date": now,
     }
 
     raw_docs = [
-        RawDocument(id="pipe_5a", source="fireant", document_type=DocumentType.NEWS, fetched_at=datetime.now(timezone.utc), payload=identical_payload),
-        RawDocument(id="pipe_5b", source="fireant", document_type=DocumentType.NEWS, fetched_at=datetime.now(timezone.utc), payload=identical_payload),
-        RawDocument(id="pipe_5c", source="fireant", document_type=DocumentType.NEWS, fetched_at=datetime.now(timezone.utc), payload=identical_payload)
+        RawDocument(
+            id="pipe_5a",
+            source="fireant",
+            document_type=DocumentType.NEWS,
+            fetched_at=datetime.now(timezone.utc),
+            payload=identical_payload,
+        ),
+        RawDocument(
+            id="pipe_5b",
+            source="fireant",
+            document_type=DocumentType.NEWS,
+            fetched_at=datetime.now(timezone.utc),
+            payload=identical_payload,
+        ),
+        RawDocument(
+            id="pipe_5c",
+            source="fireant",
+            document_type=DocumentType.NEWS,
+            fetched_at=datetime.now(timezone.utc),
+            payload=identical_payload,
+        ),
     ]
 
     try:
@@ -227,17 +269,17 @@ def test_full_acquisition_pipeline_flow_2(mongo_repo, kafka_publisher):
 
         # 4. ASSERTIONS: Verify every metric on the pipeline report
         assert report.fetched == 3
-        assert report.raw_saved == 3       # All 3 landed in Bronze Mongo
-        assert report.mapped == 3          # All 3 successfully mapped to Document schema
-        assert report.invalid == 0         # No validation failures
-        assert report.duplicates == 2      # 2 duplicates dropped
-        assert report.cleaned == 3         # All 3 went through cleaner
-        assert report.stored == 1          # Only 1 saved to Silver Mongo
-        assert report.published == 1       # Only 1 streamed to Kafka
+        assert report.raw_saved == 3  # All 3 landed in Bronze Mongo
+        assert report.mapped == 3  # All 3 successfully mapped to Document schema
+        assert report.invalid == 0  # No validation failures
+        assert report.duplicates == 2  # 2 duplicates dropped
+        assert report.cleaned == 3  # All 3 went through cleaner
+        assert report.stored == 1  # Only 1 saved to Silver Mongo
+        assert report.published == 1  # Only 1 streamed to Kafka
 
         # Verify actual database state
-        assert raw_repo.count() == 3       # Bronze DB actually holds 3 records
-        assert mongo_repo.count() == 1     # Silver DB actually holds 1 record
+        assert raw_repo.count() == 3  # Bronze DB actually holds 3 records
+        assert mongo_repo.count() == 1  # Silver DB actually holds 1 record
 
     finally:
         # Teardown the temporary raw collection
@@ -245,8 +287,8 @@ def test_full_acquisition_pipeline_flow_2(mongo_repo, kafka_publisher):
         raw_repo.close()
 
 
-def test_full_acquisition_pipeline_flow_3(mongo_repo, kafka_publisher): 
-    """ 
+def test_full_acquisition_pipeline_flow_3(mongo_repo, kafka_publisher):
+    """
     Feeds 100 randomly generated raw payloads with:
     - 100 unique documents
     - 0 duplicates (same title and content)
@@ -258,9 +300,7 @@ def test_full_acquisition_pipeline_flow_3(mongo_repo, kafka_publisher):
 
     # 1. Setup
     raw_repo = MongoRepository(
-        uri=TEST_MONGO_URI,
-        database=TEST_DATABASE,
-        collection="test_raw_documents"
+        uri=TEST_MONGO_URI, database=TEST_DATABASE, collection="test_raw_documents"
     )
 
     raw_repo.clear()  # Clean slate
@@ -274,7 +314,7 @@ def test_full_acquisition_pipeline_flow_3(mongo_repo, kafka_publisher):
         validator=DocumentValidator(),
         deduplicator=DocumentDeduplicator(),
         publisher=kafka_publisher,
-        kafka_topic="test-pipeline-stream"
+        kafka_topic="test-pipeline-stream",
     )
 
     # 3. Generate 100 unique raw test payloads
@@ -289,8 +329,8 @@ def test_full_acquisition_pipeline_flow_3(mongo_repo, kafka_publisher):
                 "postID": f"pipe_{i}",
                 "title": f"Unique Title {i}",
                 "content": f"<p>This is unique content for document {i}.</p>",
-                "date": now
-            }
+                "date": now,
+            },
         )
         for i in range(100)
     ]
@@ -301,17 +341,17 @@ def test_full_acquisition_pipeline_flow_3(mongo_repo, kafka_publisher):
 
         # 5. ASSERTIONS: Verify every metric on the pipeline report
         assert report.fetched == 100
-        assert report.raw_saved == 100       # All 100 landed in Bronze Mongo
-        assert report.mapped == 100          # All 100 successfully mapped to Document schema
-        assert report.invalid == 0           # No validation failures
-        assert report.duplicates == 0        # No duplicates dropped
-        assert report.cleaned == 100         # All 100 went through cleaner
-        assert report.stored == 100          # All 100 saved to Silver Mongo
-        assert report.published == 100       # All 100 streamed to Kafka
+        assert report.raw_saved == 100  # All 100 landed in Bronze Mongo
+        assert report.mapped == 100  # All 100 successfully mapped to Document schema
+        assert report.invalid == 0  # No validation failures
+        assert report.duplicates == 0  # No duplicates dropped
+        assert report.cleaned == 100  # All 100 went through cleaner
+        assert report.stored == 100  # All 100 saved to Silver Mongo
+        assert report.published == 100  # All 100 streamed to Kafka
 
         # Verify actual database state
-        assert raw_repo.count() == 100       # Bronze DB actually holds 100 records
-        assert mongo_repo.count() == 100     # Silver DB actually holds 100 records
+        assert raw_repo.count() == 100  # Bronze DB actually holds 100 records
+        assert mongo_repo.count() == 100  # Silver DB actually holds 100 records
 
     finally:
         # Teardown the temporary raw collection
@@ -319,9 +359,8 @@ def test_full_acquisition_pipeline_flow_3(mongo_repo, kafka_publisher):
         raw_repo.close()
 
 
-
 def test_full_acquisition_pipeline_flow_4(mongo_repo, kafka_publisher):
-    """ 
+    """
     Feeds 50 raw payloads with:
     - 25 unique documents
     - 25 duplicates (same title and content as the first 25)
@@ -335,9 +374,7 @@ def test_full_acquisition_pipeline_flow_4(mongo_repo, kafka_publisher):
 
     # 1. Setup
     raw_repo = MongoRepository(
-        uri=TEST_MONGO_URI,
-        database=TEST_DATABASE,
-        collection="test_raw_documents"
+        uri=TEST_MONGO_URI, database=TEST_DATABASE, collection="test_raw_documents"
     )
 
     raw_repo.clear()  # Clean slate
@@ -351,7 +388,7 @@ def test_full_acquisition_pipeline_flow_4(mongo_repo, kafka_publisher):
         validator=DocumentValidator(),
         deduplicator=DocumentDeduplicator(),
         publisher=kafka_publisher,
-        kafka_topic="test-pipeline-stream"
+        kafka_topic="test-pipeline-stream",
     )
 
     # 3. Generate 25 unique raw test payloads and 25 duplicates
@@ -366,8 +403,8 @@ def test_full_acquisition_pipeline_flow_4(mongo_repo, kafka_publisher):
                 "postID": f"pipe_{i}",
                 "title": f"Unique Title {i}",
                 "content": f"<p>This is unique content for document {i}.</p>",
-                "date": now
-            }
+                "date": now,
+            },
         )
         for i in range(25)
     ]
@@ -382,8 +419,8 @@ def test_full_acquisition_pipeline_flow_4(mongo_repo, kafka_publisher):
                 "postID": f"pipe_dup_{i}",
                 "title": f"Unique Title {i}",  # Same title as unique docs
                 "content": f"<p>This is unique content for document {i}.</p>",  # Same content as unique docs
-                "date": now
-            }
+                "date": now,
+            },
         )
         for i in range(25)
     ]
@@ -394,16 +431,15 @@ def test_full_acquisition_pipeline_flow_4(mongo_repo, kafka_publisher):
     try:
         report = service._process_pipeline(all_raw_docs)
 
-
         # 5. ASSERTIONS: Verify every metric on the pipeline report
         assert report.fetched == 50
-        assert report.raw_saved == 50       # All 50 landed in Bronze Mongo
-        assert report.mapped == 50          # All 50 successfully mapped to Document schema
-        assert report.invalid == 0           # No validation failures
-        assert report.duplicates == 25       # 25 duplicates dropped
-        assert report.cleaned == 50          # All 50 went through cleaner
-        assert report.stored == 25           # Only 25 saved to Silver Mongo
-        assert report.published == 25        # Only 25 streamed to Kafka
+        assert report.raw_saved == 50  # All 50 landed in Bronze Mongo
+        assert report.mapped == 50  # All 50 successfully mapped to Document schema
+        assert report.invalid == 0  # No validation failures
+        assert report.duplicates == 25  # 25 duplicates dropped
+        assert report.cleaned == 50  # All 50 went through cleaner
+        assert report.stored == 25  # Only 25 saved to Silver Mongo
+        assert report.published == 25  # Only 25 streamed to Kafka
     except Exception as e:
         print(f"Pipeline execution failed: {e}")
         raise

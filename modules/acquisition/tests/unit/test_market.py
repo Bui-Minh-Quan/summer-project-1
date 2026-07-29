@@ -14,7 +14,9 @@ from tests.fixtures.market_factories import generate_raw_market_quote
 
 class TestMarketCleaner:
     def test_clean_standardizes_ticker_and_parses_iso_string_timestamp(self) -> None:
-        raw = generate_raw_market_quote(ticker="  fpt  ", timestamp="2026-03-15 09:30:00")
+        raw = generate_raw_market_quote(
+            ticker="  fpt  ", timestamp="2026-03-15 09:30:00"
+        )
         cleaned = MarketCleaner.clean([raw])
 
         assert len(cleaned) == 1
@@ -33,7 +35,9 @@ class TestMarketCleaner:
 
 class TestMarketValidator:
     def test_validate_accepts_valid_quote(self) -> None:
-        quote = generate_raw_market_quote(open_price=10.0, high_price=12.0, low_price=9.0, close_price=11.0)
+        quote = generate_raw_market_quote(
+            open_price=10.0, high_price=12.0, low_price=9.0, close_price=11.0
+        )
         is_valid, errors = MarketValidator.validate(quote)
 
         assert is_valid is True
@@ -55,7 +59,9 @@ class TestMarketValidator:
 
 
 class TestMarketDeduplicator:
-    def test_deduplicate_assigns_fingerprint_and_removes_in_batch_duplicates(self) -> None:
+    def test_deduplicate_assigns_fingerprint_and_removes_in_batch_duplicates(
+        self,
+    ) -> None:
         dt = datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc)
         q1 = generate_raw_market_quote(ticker="VIC", timestamp=dt)
         q2 = generate_raw_market_quote(ticker="VIC", timestamp=dt)  # Duplicate bar
