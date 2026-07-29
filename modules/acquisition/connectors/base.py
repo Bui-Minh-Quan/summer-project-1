@@ -23,7 +23,9 @@ class BaseConnector(ABC, Generic[T]):
         """Fetch the most recent data stream (intraday quotes, latest news, etc.)."""
 
     @abstractmethod
-    def fetch_history(self, start_date: datetime, end_date: datetime, **kwargs: Any) -> list[T]:
+    def fetch_history(
+        self, start_date: datetime, end_date: datetime, **kwargs: Any
+    ) -> list[T]:
         """Fetch historical records bounded by two timestamps."""
 
     @abstractmethod

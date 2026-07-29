@@ -10,12 +10,13 @@ from datetime import datetime
 from typing import Any
 
 from connectors.base import BaseConnector
-from models.market import RawMarketQuote
+from models.market import MarketQuote, RawMarketQuote
 from preprocessing.market_preprocessing import (
     MarketCleaner,
     MarketDeduplicator,
     MarketValidator,
 )
+from repository.base import BaseRepository
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MarketPipelineReport:
     """Summary execution metrics for a market data pipeline run."""
+
     fetched: int = 0
     cleaned: int = 0
     valid: int = 0
@@ -36,34 +38,44 @@ class MarketAcquisitionService:
     def __init__(
         self,
         connector: BaseConnector[RawMarketQuote],
-        repository: Any,  # Uses your shared MongoRepository instance
-        publisher: Any | None = None,  # Uses your shared KafkaPublisher instance
-        kafka_topic: str = "market-ohlcv-topic"
+        repository: BaseRepository[MarketQuote],
+        publisher: Any | None = None,
+        kafka_topic: str = "market-ohlcv",
     ) -> None:
         self.connector = connector
         self.repository = repository
         self.publisher = publisher
         self.kafka_topic = kafka_topic
-        
+
         self.cleaner = MarketCleaner()
         self.validator = MarketValidator()
         self.deduplicator = MarketDeduplicator()
 
-    def run_backfill(self, start_date: datetime, end_date: datetime) -> MarketPipelineReport:
+    def run_backfill(
+        self, start_date: datetime, end_date: datetime
+    ) -> MarketPipelineReport:
         """Executes a historical pull for market bars bounded by start and end dates."""
         start_time = time.time()
-        logger.info(f"[{self.connector.source_name}] Starting market backfill from {start_date} to {end_date}")
-        
-        raw_quotes = self.connector.fetch_history(start_date=start_date, end_date=end_date)
+        logger.info(
+            f"[{self.connector.source_name}] Starting market backfill from {start_date} to {end_date}"
+        )
+
+        raw_quotes = self.connector.fetch_history(
+            start_date=start_date, end_date=end_date
+        )
         report = self._process_pipeline(raw_quotes)
-        
+
         report.duration_seconds = round(time.time() - start_time, 3)
-        logger.info(f"Market backfill completed: Stored={report.stored}, Published={report.published} in {report.duration_seconds}s")
+        logger.info(
+            f"Market backfill completed: Stored={report.stored}, Published={report.published} in {report.duration_seconds}s"
+        )
         return report
 
     def run_continuous(self, interval_seconds: int = 60) -> None:
         """Runs an infinite loop fetching the latest market quotes at polling intervals."""
-        logger.info(f"Starting continuous market acquisition loop (interval: {interval_seconds}s)")
+        logger.info(
+            f"Starting continuous market acquisition loop (interval: {interval_seconds}s)"
+        )
         try:
             while True:
                 cycle_start = time.time()
@@ -73,14 +85,16 @@ class MarketAcquisitionService:
                         self._process_pipeline(raw_quotes)
                 except Exception as e:  # noqa: BLE001
                     logger.error(f"Error in continuous market acquisition cycle: {e!s}")
-                
+
                 elapsed = time.time() - cycle_start
                 sleep_time = max(0.0, interval_seconds - elapsed)
                 time.sleep(sleep_time)
         except KeyboardInterrupt:
             logger.info("Continuous market acquisition stopped by user.")
 
-    def _process_pipeline(self, raw_quotes: list[RawMarketQuote]) -> MarketPipelineReport:
+    def _process_pipeline(
+        self, raw_quotes: list[RawMarketQuote]
+    ) -> MarketPipelineReport:
         """Internal pipeline: Clean -> Validate -> Deduplicate -> Store -> Publish."""
         report = MarketPipelineReport(fetched=len(raw_quotes))
         if not raw_quotes:

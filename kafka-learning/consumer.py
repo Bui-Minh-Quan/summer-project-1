@@ -1,5 +1,6 @@
-from confluent_kafka import Consumer
 import json
+
+from confluent_kafka import Consumer
 
 consumer = Consumer({
     "bootstrap.servers": "localhost:9092",

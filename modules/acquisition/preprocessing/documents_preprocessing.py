@@ -11,6 +11,7 @@ from repository.mongodb import MongoRepository
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
+
 class DocumentCleaner:
     # Basic cleaner for textual documents.
 
@@ -20,9 +21,9 @@ class DocumentCleaner:
 
         if document.title:
             document.title = self._clean_html(document.title)
-        
+
         return document
-    
+
     @staticmethod
     def _clean_html(text: str) -> str:
         # Remove HTML tags and normalize whitespace
@@ -36,9 +37,6 @@ class DocumentCleaner:
         return text.strip()
 
 
-
-
-
 class DocumentDeduplicator:
     """Computes deterministic document fingerprints and manages deduplication."""
 
@@ -48,10 +46,10 @@ class DocumentDeduplicator:
         title_part = document.title or ""
         content_part = document.content or ""
         source_part = document.source or ""
-        
+
         text = f"{title_part}|{content_part}|{source_part}"
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
-    
+
     def process(self, document: Document) -> Document:
         """Computes and assigns the SHA-256 fingerprint to the document."""
         document.fingerprint = self.fingerprint(document)
@@ -59,20 +57,17 @@ class DocumentDeduplicator:
 
     # In preprocessing/deduplicator.py:
     @staticmethod
-    def is_duplicate(document: Document, repository: MongoRepository) -> bool: 
+    def is_duplicate(document: Document, repository: MongoRepository) -> bool:
         if not document.fingerprint:
             document.fingerprint = DocumentDeduplicator.fingerprint(document)
         return repository.exists_by_fingerprint(document.fingerprint)
 
 
-
-
-
-
 @dataclass
 class ValidationResult:
-    valid: bool 
+    valid: bool
     errors: list[str]
+
 
 class DocumentValidator:
     REQUIRED_FIELDS: ClassVar[list[str]] = ["title", "content", "source"]
@@ -83,22 +78,23 @@ class DocumentValidator:
         # Required fields
         if document.document_type == DocumentType.NEWS and not document.title:
             errors.append("Missing title for news article.")
-        
+
         if not document.content:
             errors.append("Missing content.")
 
         if not document.source:
-            errors.append("Missing source.") 
-        
+            errors.append("Missing source.")
+
         # Date
         if document.published_at and document.published_at > datetime.now(timezone.utc):
             errors.append("Publication date is in the future.")
-        
+
         # Language
-        if document.language.value not in {Language.VI.value, Language.EN.value, Language.UNKNOWN.value}:
+        if document.language.value not in {
+            Language.VI.value,
+            Language.EN.value,
+            Language.UNKNOWN.value,
+        }:
             errors.append("Unsupported language.")
-        
-        return ValidationResult(
-            valid=len(errors) == 0,
-            errors=errors
-        )
+
+        return ValidationResult(valid=len(errors) == 0, errors=errors)

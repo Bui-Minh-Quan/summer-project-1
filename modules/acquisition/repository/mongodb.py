@@ -1,11 +1,11 @@
-""" 
-MongoDB implementation of the repository
+"""
+MongoDB implementation of the generic repository.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Generic, TypeVar
 
-from models.document import Document
+from pydantic import BaseModel
 from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -13,127 +13,120 @@ from pymongo.errors import BulkWriteError
 
 from repository.base import BaseRepository
 
+T = TypeVar("T", bound=BaseModel)
 
-class MongoRepository(BaseRepository):
-    # MongoDB repository for Document objects
 
-    def __init__(self, uri: str, database: str = "financial_ai", collection: str = "raw_documents") -> None:
+class MongoRepository(BaseRepository[T], Generic[T]):
+    """MongoDB generic repository for Pydantic models."""
+
+    def __init__(
+        self,
+        uri: str,
+        database: str = "financial_ai",
+        collection: str = "raw_documents",
+        model_class: type[T] | None = None,
+    ) -> None:
         self.client: MongoClient[dict[str, Any]] = MongoClient(uri)
         self.db: Database[dict[str, Any]] = self.client[database]
         self.collection: Collection[dict[str, Any]] = self.db[collection]
+        self.model_class = model_class
 
-        # Make document id unique
+        # Ensure index on canonical 'id' and 'fingerprint'
         self.collection.create_index("id", unique=True)
-
         self.collection.create_index("fingerprint", unique=True, sparse=True)
 
+    def save(self, entity: T) -> str:
+        """Insert a single entity."""
+        self.collection.insert_one(entity.model_dump(mode="json"))
+        entity_id = getattr(entity, "id", None)
+        return str(entity_id) if entity_id else ""
 
-    
-    # CRUD
-    def save(self, document: Document) -> str:
-        # Insert a new document
-        self.collection.insert_one(
-            document.model_dump(mode="json")
-        )
-
-        return document.id
-
-    def save_many(self, documents: list[Document]) -> int:
+    def save_many(self, entities: list[T]) -> int:
         """
-        Insert many documents using unordered bulk writes.
-        Silently ignores any duplicate ID or duplicate fingerprint errors.
+        Insert multiple entities using unordered bulk writes.
+        Silently ignores duplicate key errors (code 11000).
         """
-        if not documents:
+        if not entities:
             return 0
-        
+
         operations = []
-        for document in documents:
+        for entity in entities:
+            entity_id = getattr(entity, "id", None)
             operations.append(
                 UpdateOne(
-                    {"id": document.id},
-                    {"$setOnInsert": document.model_dump(mode="json")},
-                    upsert=True
+                    {"id": entity_id},
+                    {"$setOnInsert": entity.model_dump(mode="json")},
+                    upsert=True,
                 )
             )
-        
+
         try:
             result = self.collection.bulk_write(operations, ordered=False)
             return result.upserted_count
-            
         except BulkWriteError as bwe:
-            # Check if there are any errors OTHER than code 11000 (Duplicate Key)
             real_errors = [
-                err for err in bwe.details.get("writeErrors", [])
+                err
+                for err in bwe.details.get("writeErrors", [])
                 if err.get("code") != 11000
             ]
-            
             if real_errors:
-                # If a real database failure occurred (e.g., auth failure, disk full), crash loudly!
-                raise 
-            
-            # If all errors were just duplicate keys, gracefully extract the count of successful saves!
-            successful_saves = bwe.details.get("nUpserted", 0) + bwe.details.get("nInserted", 0)
+                raise
+
+            successful_saves = bwe.details.get("nUpserted", 0) + bwe.details.get(
+                "nInserted", 0
+            )
             return successful_saves
-        
-        
-    def upsert(self, document: Document) -> str:
-        # Replace document if it exists
-        # Else just insert it
+
+    def upsert(self, entity: T) -> str:
+        """Insert or replace an existing entity."""
+        entity_id = getattr(entity, "id", None)
         self.collection.update_one(
-            {"id": document.id},
-            {"$set": document.model_dump(mode="json")},
-            upsert=True
+            {"id": entity_id},
+            {"$set": entity.model_dump(mode="json")},
+            upsert=True,
         )
+        return str(entity_id) if entity_id else ""
 
-        return document.id
-    
-    def find_by_id(self, document_id: str) -> Document | None:
-        result = self.collection.find_one({"id": document_id})
-
+    def find_by_id(self, entity_id: str) -> T | None:
+        result = self.collection.find_one({"id": entity_id})
         if result is None:
-            return None 
-        
-        result.pop("_id", None)
+            return None
 
-        return Document.model_validate(result) 
-    
-    def exists(self, document_id: str) -> bool:
-        return (
-            self.collection.count_documents({"id": document_id}, limit=1) > 0
-        )
-    
+        result.pop("_id", None)
+        assert self.model_class is not None
+        return self.model_class.model_validate(result)
+
+    def exists(self, entity_id: str) -> bool:
+        return self.collection.count_documents({"id": entity_id}, limit=1) > 0
+
     def count(self) -> int:
         return self.collection.count_documents({})
-    
 
-    # Utility
-    def delete(self, document_id: str) -> bool:
-        result = self.collection.delete_one({"id": document_id})
-
+    def delete(self, entity_id: str) -> bool:
+        result = self.collection.delete_one({"id": entity_id})
         return result.deleted_count > 0
-    
-    def clear(self):
+
+    def clear(self) -> None:
         self.collection.delete_many({})
 
-    def close(self):
+    def close(self) -> None:
         self.client.close()
-    
-    # Helper 
-    def exists_by_fingerprint(self, fingerprint: str) -> bool:
-        return self.collection.count_documents({"fingerprint": fingerprint}, limit=1) > 0
-    
 
-    def get_latest_timestamp(self, source: str | None = None, doc_type: str | None = None) -> datetime | None:
-        query = {}
+    def exists_by_fingerprint(self, fingerprint: str) -> bool:
+        return (
+            self.collection.count_documents({"fingerprint": fingerprint}, limit=1) > 0
+        )
+
+    def get_latest_timestamp(
+        self, source: str | None = None, doc_type: str | None = None
+    ) -> datetime | None:
+        query: dict[str, Any] = {}
         if source:
-            query["source"] = source 
+            query["source"] = source
         if doc_type:
             query["document_type"] = doc_type
-        
-        doc = self.collection.find_one(query, sort=[("published_at", -1)])
 
+        doc = self.collection.find_one(query, sort=[("published_at", -1)])
         if doc and "published_at" in doc:
             return doc["published_at"]
         return None
-
-        

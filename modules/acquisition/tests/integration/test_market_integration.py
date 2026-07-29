@@ -9,13 +9,17 @@ from services.market_service import MarketAcquisitionService
 from tests.fixtures.market_factories import generate_market_batch
 
 
-def test_market_service_pipeline_storage_and_publishing(mongo_repo, kafka_publisher) -> None:
+def test_market_service_pipeline_storage_and_publishing(
+    mongo_repo, kafka_publisher
+) -> None:
     """Verifies that MarketAcquisitionService cleans, validates, stores in Mongo, and publishes to Kafka."""
     mongo_repo.clear()
-    
+
     # Generate 5 valid quotes and 2 invalid quotes
-    batch = generate_market_batch(symbols=["FPT"], count_per_symbol=5, include_invalid=True)
-    
+    batch = generate_market_batch(
+        symbols=["FPT"], count_per_symbol=5, include_invalid=True
+    )
+
     # Mock connector
     mock_connector = MagicMock()
     mock_connector.source_name = "mock_vnstock"
@@ -25,7 +29,7 @@ def test_market_service_pipeline_storage_and_publishing(mongo_repo, kafka_publis
         connector=mock_connector,
         repository=mongo_repo,
         publisher=kafka_publisher,
-        kafka_topic="test-market-topic"
+        kafka_topic="test-market-topic",
     )
 
     start_date = datetime.now(timezone.utc) - timedelta(days=10)

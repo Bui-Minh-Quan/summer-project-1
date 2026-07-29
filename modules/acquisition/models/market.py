@@ -34,6 +34,7 @@ class RawMarketQuote(BaseModel):
 
 class MarketQuote(BaseModel):
     """Silver Layer: Canonical, validated OHLCV bar ready for storage and Kafka transmission."""
+
     id: str | None = None  # Canonical unique ID for MongoDB _id and Kafka routing key
     symbol: str
     timestamp: datetime
