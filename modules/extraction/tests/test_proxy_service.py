@@ -60,5 +60,35 @@ async def test_proxy_forwards_news_with_default_symbols():
         title="State Bank interest rate policy",
         content="The State Bank announced new interest rate targets.",
         symbols=target_symbols,
+        published_at=None,  # <-- ADD THIS LINE
+        caching=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_proxy_forwards_news_with_published_at():
+    from datetime import datetime, timezone
+
+    mock_service = MagicMock()
+    mock_service.process_document = AsyncMock(return_value="success_result")
+    proxy = NewsOnlyServiceProxy(target_service=mock_service)
+
+    test_time = datetime(2026, 3, 15, 10, 0, tzinfo=timezone.utc)
+
+    result = await proxy.process_document(
+        document_id="news_102",
+        title="Test Title",
+        content="Test Content",
+        document_type="news",
+        published_at=test_time,
+    )
+
+    assert result == "success_result"
+    mock_service.process_document.assert_called_once_with(
+        document_id="news_102",
+        title="Test Title",
+        content="Test Content",
+        symbols=None,
+        published_at=test_time,
         caching=True,
     )

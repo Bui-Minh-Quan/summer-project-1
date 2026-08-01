@@ -61,6 +61,12 @@ class ExtractionResult(BaseModel):
     """
     id: str  # Deterministic SHA-256 of document_id + prompt_version
     document_id: str
+
+    published_at: datetime = Field(
+        default_factory=lambda: datetime(1970, 1, 1, tzinfo=timezone.utc),
+        description="Time the source document was published"
+    )
+
     relations: list[GraphRelation]   
     metadata: ExtractionMetadata
 

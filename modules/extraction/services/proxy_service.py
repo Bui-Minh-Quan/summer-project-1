@@ -3,6 +3,7 @@ Proxy service wrappers for Module 2 extraction pipelines.
 """
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from models.extraction import ExtractionResult
@@ -29,6 +30,7 @@ class NewsOnlyServiceProxy:
         content: str,
         symbols: list[str] | None = None,
         document_type: str | None = None,
+        published_at: datetime | None = None,
         **kwargs: Any,
     ) -> ExtractionResult | None:
         """Intercepts individual document calls from Kafka consumer and drops non-news items."""
@@ -47,6 +49,7 @@ class NewsOnlyServiceProxy:
             title=title,
             content=content,
             symbols=effective_symbols,
+            published_at=published_at,
             caching=kwargs.get("caching", True),
         )
 
