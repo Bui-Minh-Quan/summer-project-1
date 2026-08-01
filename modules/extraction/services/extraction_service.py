@@ -7,6 +7,7 @@ import asyncio
 import hashlib
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from cache.cache import LLMExtractionCache
@@ -230,6 +231,7 @@ class ExtractionService:
         title: str,
         content: str,
         symbols: list[str] | None = None,
+        published_at: datetime | None = None,
         caching: bool = True,
     ) -> ExtractionResult | None:
         """Executes the Target-Anchored N-Pass reasoning pipeline for a single document."""
@@ -301,9 +303,12 @@ class ExtractionService:
             total_output_tokens=total_out_tokens,
         )
 
+        final_published_at = published_at or datetime(1970, 1, 1, tzinfo=timezone.utc)
+
         result = ExtractionResult(
             id=result_id,
             document_id=document_id,
+            published_at=final_published_at,
             relations=accumulated_relations,
             metadata=metadata,
         )
@@ -327,12 +332,23 @@ class ExtractionService:
         logger.info(f"Starting {self.max_passes}-pass batch extraction for {len(documents)} documents...")
         start_time = time.time()
 
+        def parse_pub_at(val: Any) -> datetime | None:
+            if isinstance(val, datetime):
+                return val
+            if isinstance(val, str) and val.strip():
+                try:
+                    return datetime.fromisoformat(val.replace("Z", "+00:00"))
+                except ValueError:
+                    return None
+            return None
+
         tasks = [
             self.process_document(
                 document_id=str(doc.get("id") or doc.get("fingerprint") or doc.get("_id") or ""),
                 title=str(doc.get("title", "")),
                 content=str(doc.get("content", "")),
                 symbols=doc.get("symbols"),
+                published_at=parse_pub_at(doc.get("published_at")),
             )
             for doc in documents
             if doc.get("content")
@@ -356,12 +372,14 @@ class ExtractionService:
         )
         return successful_results
 
+
     async def test_document(
         self,
         document_id: str,
         title: str,
         content: str,
         symbols: list[str] | None = None,
+        published_at: datetime | None = None,  
         caching: bool = False,
     ) -> ExtractionResult | None:
         """Executes the Target-Anchored pipeline for testing without database persistence."""
@@ -425,9 +443,13 @@ class ExtractionService:
             total_output_tokens=total_out_tokens,
         )
 
+        # Fallback to Epoch if published_at is None
+        final_published_at = published_at or datetime(1970, 1, 1, tzinfo=timezone.utc)
+
         result = ExtractionResult(
             id="test",
             document_id=document_id,
+            published_at=final_published_at,  # NEW
             relations=accumulated_relations,
             metadata=metadata,
         )

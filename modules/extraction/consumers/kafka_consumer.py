@@ -1,10 +1,10 @@
 """
 Consolidated Kafka Consumer Adapters for Module 2.
 """
-
 import asyncio
 import json
 import logging
+from datetime import datetime
 from typing import Any
 
 from confluent_kafka import Consumer, KafkaError
@@ -46,7 +46,7 @@ class DocumentKafkaConsumer:
                     await asyncio.sleep(0.05)
                     continue
 
-                # ✨ Line 51 Fix: Narrow KafkaError using local variable
+                # Line 51 Fix: Narrow KafkaError using local variable
                 err = msg.error()
                 if err is not None:
                     if err.code() != KafkaError._PARTITION_EOF:
@@ -62,6 +62,15 @@ class DocumentKafkaConsumer:
                     doc_id = str(payload.get("id") or payload.get("fingerprint") or payload.get("_id") or "")
                     title = payload.get("title") or ""
                     content = payload.get("content") or ""
+                    pub_at_str = payload.get("published_at")
+                    published_at = None
+
+                    if pub_at_str:
+                        try:
+                            # Replace Z with +00:00 for pre-3.11 fromisoformat compatibility
+                            published_at = datetime.fromisoformat(pub_at_str.replace("Z", "+00:00"))
+                        except ValueError:
+                            pass
 
                     if doc_id and content:
                         await self.extraction_service.process_document(
@@ -70,6 +79,7 @@ class DocumentKafkaConsumer:
                             content=content,
                             symbols=payload.get("symbols"),
                             document_type=payload.get("document_type") or payload.get("type"),
+                            published_at=published_at
                         )
                 except Exception as e:  # noqa: BLE001
                     logger.error(f"Failed to process Kafka document offset {msg.offset()}: {e}")
@@ -114,7 +124,7 @@ class MarketDataKafkaConsumer:
                     await asyncio.sleep(0.05)
                     continue
 
-                # ✨ Line 117 Fix: Narrow KafkaError using local variable
+                # Line 117 Fix: Narrow KafkaError using local variable
                 err = msg.error()
                 if err is not None:
                     if err.code() != KafkaError._PARTITION_EOF:
@@ -171,7 +181,7 @@ class PostFeatureKafkaConsumer:
                     await asyncio.sleep(0.05)
                     continue
 
-                # ✨ Line 172 Fix: Narrow KafkaError using local variable
+                # Line 172 Fix: Narrow KafkaError using local variable
                 err = msg.error()
                 if err is not None:
                     if err.code() != KafkaError._PARTITION_EOF:

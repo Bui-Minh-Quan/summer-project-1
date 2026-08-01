@@ -11,6 +11,7 @@ from typing import Any
 from config import config
 from consumers.kafka_consumer import MarketDataKafkaConsumer, PostFeatureKafkaConsumer
 from models.features import MarketSentimentFeatureVector
+from publishers.kafka_publisher import KafkaPublisher  # NEW IMPORT
 from repository.mongodb import MongoRepository
 from services.feature_service import FeatureEngineeringService
 
@@ -39,7 +40,19 @@ async def main() -> None:
         collection="silver_market_quotes",
     )
 
-    feature_service = FeatureEngineeringService(feature_repo=feature_repo, silver_market_repo=silver_market_repo)
+    # Instantiate the publisher for the frontend stream
+    publisher = KafkaPublisher[MarketSentimentFeatureVector](
+        bootstrap_servers=config.kafka_broker,
+        client_id="module2-feature-publisher"
+    )
+
+    # Pass the publisher to the service
+    feature_service = FeatureEngineeringService(
+        feature_repo=feature_repo, 
+        silver_market_repo=silver_market_repo,
+        publisher=publisher,
+        output_topic="gold-market-features"
+    )
 
     market_consumer = MarketDataKafkaConsumer(
         feature_service=feature_service,
@@ -64,7 +77,8 @@ async def main() -> None:
     finally:
         feature_repo.close()
         silver_market_repo.close()
-        logger.info("✅ All repository connections closed.")
+        publisher.close() 
+        logger.info("✅ All repository and publisher connections closed.")
 
 
 if __name__ == "__main__":

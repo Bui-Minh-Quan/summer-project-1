@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from models.features import MarketQuoteInput, MarketSentimentFeatureVector
+from publishers.base import BasePublisher
 from repository.mongodb import MongoRepository
 
 logger = logging.getLogger(__name__)
@@ -26,9 +27,13 @@ class FeatureEngineeringService:
         self,
         feature_repo: MongoRepository[MarketSentimentFeatureVector],
         silver_market_repo: MongoRepository[Any],
+        publisher: BasePublisher[MarketSentimentFeatureVector] | None = None,  # NEW
+        output_topic: str = "gold-market-features",
     ) -> None:
         self.feature_repo = feature_repo
         self.silver_market_repo = silver_market_repo
+        self.publisher = publisher            # NEW
+        self.output_topic = output_topic
         self.feature_repo.collection.drop_index("id_1")
     
 
@@ -61,7 +66,7 @@ class FeatureEngineeringService:
             volume_ratio = 1.0
 
         existing_data = self.feature_repo.collection.find_one({"_id": doc_id})
-        # ✨ Line 38 Fix: Explicit parse using datetime class
+        # Line 38 Fix: Explicit parse using datetime class
         parsed_dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
         
         vector = MarketSentimentFeatureVector.model_validate(existing_data) if existing_data else MarketSentimentFeatureVector(
@@ -166,3 +171,6 @@ class FeatureEngineeringService:
             {"$set": payload},
             upsert=True,
         )
+
+        if self.publisher:
+            self.publisher.publish(self.output_topic, vec, key=vec.id)
