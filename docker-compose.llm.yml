@@ -2,13 +2,9 @@ services:
 
   vllm:
     image: vllm/vllm-openai:v0.10.1
-
     container_name: vllm
-
     restart: unless-stopped
-
     runtime: nvidia
-
     ipc: host
 
     ports:
@@ -41,3 +37,10 @@ services:
       interval: 20s
       timeout: 10s
       retries: 10
+    
+    networks:
+      - financial-ai-network  
+
+networks:
+  financial-ai-network:    
+    external: true
