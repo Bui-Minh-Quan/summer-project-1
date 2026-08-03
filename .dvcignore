@@ -1,0 +1,13 @@
+# Ignore Git directories
+.git
+.gitignore
+
+# Ignore Python artifacts
+__pycache__
+*.pyc
+venv/
+.venv/
+
+# Ignore MLflow database
+mlflow.db
+mlruns/

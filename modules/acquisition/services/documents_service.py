@@ -122,12 +122,38 @@ class AcquisitionService:
     def run_backfill(self, start_date, end_date: datetime) -> PipelineReport:
         # Mode 1: Historical backfill
         logger.info(f"Starting backfill mode: {start_date} -> {end_date}")
-        raw_docs = self.connector.fetch_history(
-            start_date=start_date, end_date=end_date
-        )
 
-        return self._process_pipeline(raw_docs)
+        if hasattr(self.connector, "_crawl_feed"):
+            from models.document import DocumentType
 
+            logger.info("Fetching and processing POSTS...")
+            raw_posts = self.connector._crawl_feed(
+                doc_type=DocumentType.POST, limit=100000, start_date=start_date, end_date=end_date
+            )
+            post_report = self._process_pipeline(raw_posts)
+
+            logger.info("Fetching and processing NEWS...")
+            raw_news = self.connector._crawl_feed(
+                doc_type=DocumentType.NEWS, limit=100000, start_date=start_date, end_date=end_date
+            )
+            news_report = self._process_pipeline(raw_news)
+
+            # Sum ALL metric fields across both POSTS and NEWS runs
+            post_report.fetched += news_report.fetched
+            post_report.raw_saved += news_report.raw_saved
+            post_report.mapped += news_report.mapped
+            post_report.cleaned += news_report.cleaned
+            post_report.invalid += news_report.invalid
+            post_report.duplicates += news_report.duplicates
+            post_report.stored += news_report.stored
+            post_report.published += news_report.published
+            post_report.duration += news_report.duration
+
+            return post_report
+        else:
+            raw_docs = self.connector.fetch_history(start_date=start_date, end_date=end_date)
+            return self._process_pipeline(raw_docs)
+        
     def run_continuous(self, interval_seconds: int = 300, batch_limit: int = 500):
         # Mode 2: Continuous streaming
         logger.info("Starting continuous streaming mode")
