@@ -93,6 +93,11 @@ class FeatureEngineeringService:
         if str(doc_type).strip().lower() != "post":
             return []
 
+        # Extract a unique identifier for the post
+        post_id = str(payload.get("id") or payload.get("fingerprint") or "")
+        if not post_id:
+            return []
+
         raw_symbols = payload.get("symbols") or []
         matched_symbols = [s.strip().upper() for s in raw_symbols if isinstance(s, str) and s.strip().upper() in TARGET_SYMBOLS]
         if not matched_symbols:
@@ -131,6 +136,11 @@ class FeatureEngineeringService:
                 timestamp=parsed_dt,
             )
 
+            # Idempotency Check! Skip if we already did the math for this post
+            if post_id in vector.processed_document_ids:
+                logger.debug(f"[Idempotency] Post {post_id} already processed for {symbol} on {date_str}. Skipping.")
+                continue
+
             vector.post_count += 1
             vector.total_likes += likes
             vector.total_replies += replies
@@ -148,6 +158,8 @@ class FeatureEngineeringService:
             vector.mean_sentiment = round(vector.sentiment_sum / vector.post_count, 4)
             vector.net_sentiment_score = round((vector.positive_posts - vector.negative_posts) / vector.post_count, 4)
             vector.sentiment_price_divergence = self._compute_divergence(vector)
+
+            vector.processed_document_ids.append(post_id)
 
             self._save_vector(vector)
             logger.debug(f"[Social Stream] Updated {symbol} ({date_str}) | Posts: {vector.post_count} | Net Sentiment: {vector.net_sentiment_score}")

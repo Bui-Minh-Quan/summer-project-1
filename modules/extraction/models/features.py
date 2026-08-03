@@ -5,7 +5,7 @@ Includes payload schemas for incoming market data and output Gold Feature Vector
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MarketQuoteInput(BaseModel):
@@ -54,5 +54,8 @@ class MarketSentimentFeatureVector(BaseModel):
     mean_sentiment: float = 0.0  # sentiment_sum / post_count
     net_sentiment_score: float = 0.0  # (pos - neg) / post_count
     sentiment_price_divergence: float = 0.0  # Highlights retail hype vs. price movement
+
+    # NEW: Track processed posts to prevent double-counting math
+    processed_document_ids: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(populate_by_name=True, extra="ignore")

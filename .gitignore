@@ -1,8 +1,22 @@
-# environment files
+# Environment files
 .env
 
-# virtual environment
+# Virtual environment
 .venv/
+venv/
 
 # Python cache files
 __pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# MLOps & MLflow Artifacts
+mlflow.db
+mlruns/
+
+# Data Version Control (DVC)
+# Ignore raw data files; DVC manages them via .dvc pointers
+data/gold_features.parquet
+!data/*.dvc

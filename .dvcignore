@@ -1,3 +1,13 @@
-# Add patterns of files dvc should ignore, which could improve
-# the performance. Learn more at
-# https://dvc.org/doc/user-guide/dvcignore
+# Ignore Git directories
+.git
+.gitignore
+
+# Ignore Python artifacts
+__pycache__
+*.pyc
+venv/
+.venv/
+
+# Ignore MLflow database
+mlflow.db
+mlruns/

@@ -122,11 +122,37 @@ class AcquisitionService:
     def run_backfill(self, start_date, end_date: datetime) -> PipelineReport:
         # Mode 1: Historical backfill
         logger.info(f"Starting backfill mode: {start_date} -> {end_date}")
-        raw_docs = self.connector.fetch_history(
-            start_date=start_date, end_date=end_date
-        )
-
-        return self._process_pipeline(raw_docs)
+        
+        # Safely detect if the connector is FireAnt to do split-processing and prevent memory loss
+        if hasattr(self.connector, "_crawl_feed"):
+            from models.document import DocumentType
+            
+            logger.info("Fetching and processing POSTS...")
+            raw_posts = self.connector._crawl_feed(
+                doc_type=DocumentType.POST, limit=1000000, start_date=start_date, end_date=end_date
+            )
+            print(f"Number of raw posts crawled: {len(raw_posts)}")
+            post_report = self._process_pipeline(raw_posts)
+            logger.info(f"✅ Saved {post_report.stored} POSTS to database.")
+            
+            logger.info("Fetching and processing NEWS...")
+            raw_news = self.connector._crawl_feed(
+                doc_type=DocumentType.NEWS, limit=100000, start_date=start_date, end_date=end_date
+            )
+            news_report = self._process_pipeline(raw_news)
+            logger.info(f"✅ Saved {news_report.stored} NEWS to database.")
+            
+            # Combine metrics for the final return
+            post_report.fetched += news_report.fetched
+            post_report.stored += news_report.stored
+            post_report.published += news_report.published
+            return post_report
+            
+        else:
+            # Fallback for other standard connectors
+            raw_docs = self.connector.fetch_history(start_date=start_date, end_date=end_date)
+            return self._process_pipeline(raw_docs)
+        
 
     def run_continuous(self, interval_seconds: int = 300, batch_limit: int = 500):
         # Mode 2: Continuous streaming
