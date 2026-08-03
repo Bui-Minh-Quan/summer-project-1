@@ -1,0 +1,5 @@
+outs:
+- md5: 7d0db229919a1ac6bd294331328dba82
+  size: 3330539
+  hash: md5
+  path: gold_features.parquet
