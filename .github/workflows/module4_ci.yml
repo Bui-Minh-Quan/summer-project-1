@@ -1,0 +1,50 @@
+name: Module 4 CI (Reasoning Engine)
+
+on:
+  push:
+    branches: [ main, develop, feature/*, reasoning ]
+    paths:
+      - 'modules/reasoning/**'
+      - '.github/workflows/module4_ci.yml'
+      - 'requirements.txt'
+
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'modules/reasoning/**'
+      - '.github/workflows/module4_ci.yml'
+      - 'requirements.txt'
+
+jobs:
+  validate-and-test:
+    name: Lint, Type Check & Test (Reasoning Module)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Platform Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Run Ruff Code Linter
+        run: |
+          ruff check modules/reasoning/
+
+      - name: Run Mypy Static Type Checking
+        run: |
+          mypy modules/reasoning/ --ignore-missing-imports --explicit-package-bases
+
+      - name: Run Unit & Integration Tests with Pytest
+        run: |
+          pytest modules/reasoning/tests/ -v
