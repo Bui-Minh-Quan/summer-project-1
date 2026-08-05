@@ -2,15 +2,15 @@ import io
 import uuid
 from typing import Annotated
 
+from core.config import settings
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from pypdf import PdfReader
+
 from modules.extraction.cache.cache import LLMExtractionCache
 from modules.extraction.llm.vllm_clients import VLLMClient
 
 # Import Module 2 extraction service
 from modules.extraction.services.extraction_service import ExtractionService
-from pypdf import PdfReader
-
-from core.config import settings
 
 router = APIRouter()
 

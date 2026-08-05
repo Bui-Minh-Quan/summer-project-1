@@ -3,14 +3,13 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from core.config import settings
 from fastapi import FastAPI
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
+from jobs.populate_actuals import populate_actuals
 from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import from_url as redis_from_url
-
-from core.config import settings
-from jobs.populate_actuals import populate_actuals
 from routers import graph, predictions, sentiment, stream
 from routers.stream import consume_kafka_market_data
 

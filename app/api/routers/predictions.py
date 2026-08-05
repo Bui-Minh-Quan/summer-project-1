@@ -2,9 +2,6 @@ import asyncio
 from datetime import UTC, datetime
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi_cache.decorator import cache
-
 from core.config import settings
 from core.schemas import (
     ClassificationRecord,
@@ -13,6 +10,8 @@ from core.schemas import (
     PredictionRequest,
     RegressionRecord,
 )
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi_cache.decorator import cache
 
 router = APIRouter()
 

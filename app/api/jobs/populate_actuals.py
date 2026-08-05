@@ -1,10 +1,9 @@
 import asyncio
 import logging
 
+from core.config import settings
 from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import from_url as redis_from_url
-
-from core.config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("populate_actuals_job")
