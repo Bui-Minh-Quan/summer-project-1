@@ -1,9 +1,10 @@
 import asyncio
 import json
 import logging
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from confluent_kafka import Consumer, KafkaError
 import os
+
+from confluent_kafka import Consumer, KafkaError
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger("stream_api")
 router = APIRouter()
@@ -36,7 +37,7 @@ class ConnectionManager:
             for connection in self.active_connections[symbol]:
                 try:
                     await connection.send_json(message)
-                except Exception:
+                except Exception: # noqa: BLE001
                     dead_connections.append(connection)
             
             # Clean up dropped connections
@@ -84,7 +85,7 @@ async def consume_kafka_market_data():
                 
                 if symbol:
                     await manager.broadcast(symbol, payload)
-            except Exception as e:
+            except Exception as e: # noqa: BLE001
                 logger.error(f"Failed to broadcast Kafka message: {e}")
                 
     except asyncio.CancelledError:

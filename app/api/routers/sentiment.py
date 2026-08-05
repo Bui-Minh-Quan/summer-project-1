@@ -1,6 +1,6 @@
+
+from fastapi import APIRouter, Query, Request
 from fastapi_cache.decorator import cache
-from fastapi import APIRouter, Request, Query
-from typing import List, Optional
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -11,7 +11,7 @@ class NewsRecord(BaseModel):
     content: str
     published_at: str
     source: str
-    url: Optional[str]
+    url: str | None
 
 class SentimentScore(BaseModel):
     symbol: str
@@ -21,7 +21,7 @@ class SentimentScore(BaseModel):
     total_engagement: int
     normalized_hype_score: float
 
-@router.get("/news/{symbol}", response_model=List[NewsRecord])
+@router.get("/news/{symbol}", response_model=list[NewsRecord])
 @cache(expire=300)
 async def get_related_news(
     symbol: str, 

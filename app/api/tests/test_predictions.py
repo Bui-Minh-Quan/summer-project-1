@@ -1,5 +1,4 @@
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
 
 
 def test_get_dual_prediction_success(client, mock_db):

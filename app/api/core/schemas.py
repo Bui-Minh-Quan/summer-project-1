@@ -1,10 +1,11 @@
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
 from datetime import datetime
+
+from pydantic import BaseModel, Field
+
 
 class PredictionRequest(BaseModel):
     symbol: str = Field(..., description="Target stock ticker, e.g., FPT")
-    date: Optional[datetime] = Field(
+    date: datetime | None = Field(
         default=None,
         description="Target date for prediction. Defaults to current UTC time if omitted."
     )
@@ -21,14 +22,14 @@ class DualPredictionResponse(BaseModel):
     trend: str
     confidence: float
     reasoning: str
-    price_forecasts: List[HorizonPrediction]
+    price_forecasts: list[HorizonPrediction]
 
 class ClassificationRecord(BaseModel):
     date: str
     price: float
     predicted_trend: str
-    actual_trend: Optional[str]
-    reasoning: Optional[str]
+    actual_trend: str | None
+    reasoning: str | None
     model: str
 
 
@@ -40,9 +41,9 @@ class RegressionRecord(BaseModel):
     predicted_price_t3: float
     predicted_price_t4: float
     predicted_price_t5: float
-    actual_price_t1: Optional[float]
-    actual_price_t2: Optional[float]
-    actual_price_t3: Optional[float]
-    actual_price_t4: Optional[float]
-    actual_price_t5: Optional[float]
+    actual_price_t1: float | None
+    actual_price_t2: float | None
+    actual_price_t3: float | None
+    actual_price_t4: float | None
+    actual_price_t5: float | None
     model: str

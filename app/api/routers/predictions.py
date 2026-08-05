@@ -1,7 +1,7 @@
 import asyncio
+from datetime import UTC, datetime
+
 import httpx
-from datetime import datetime, UTC
-from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi_cache.decorator import cache
 
@@ -78,8 +78,8 @@ async def get_dual_prediction(req: PredictionRequest, request: Request):
     mlops_tasks = [fetch_mlops_prediction(symbol, features, h) for h in range(1, 6)]
     try:
         results = await asyncio.gather(*mlops_tasks, fetch_reasoning(symbol, target_dt))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal prediction service failure: {str(e)}")
+    except Exception as e: # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Internal prediction service failure: {e!s}")
 
     mlops_results = results[:-1]
     reasoning_result = results[-1]
@@ -144,12 +144,12 @@ async def get_dual_prediction(req: PredictionRequest, request: Request):
     return final_response
 
 
-@router.get("/backtest/classification/{symbol}", response_model=List[ClassificationRecord])
+@router.get("/backtest/classification/{symbol}", response_model=list[ClassificationRecord])
 @cache()
 async def get_classification_backtest(
     symbol: str, 
     request: Request,
-    model: Optional[str] = None,
+    model: str | None = None,
     page: int = Query(1, ge=1), 
     limit: int = Query(50, ge=1, le=100)
 ):
@@ -176,12 +176,12 @@ async def get_classification_backtest(
     ]
 
 
-@router.get("/backtest/regression/{symbol}", response_model=List[RegressionRecord])
+@router.get("/backtest/regression/{symbol}", response_model=list[RegressionRecord])
 @cache()
 async def get_regression_backtest(
     symbol: str, 
     request: Request,
-    model: Optional[str] = None,
+    model: str | None = None,
     page: int = Query(1, ge=1), 
     limit: int = Query(50, ge=1, le=100)
 ):

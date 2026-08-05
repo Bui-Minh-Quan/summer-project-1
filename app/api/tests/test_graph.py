@@ -1,6 +1,5 @@
 import io
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
 
 
 def test_extract_knowledge_graph_txt_file(client):

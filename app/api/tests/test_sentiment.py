@@ -1,5 +1,4 @@
 from unittest.mock import AsyncMock, MagicMock
-import pytest
 
 
 def test_get_related_news(client, mock_db):
