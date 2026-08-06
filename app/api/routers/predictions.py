@@ -29,7 +29,7 @@ async def fetch_mlops_prediction(symbol: str, features: dict, horizon: int) -> d
 async def fetch_reasoning(symbol: str, target_date: datetime) -> dict:
     """Calls the internal vLLM Reasoning TRR service with the anchored date."""
     payload = {"symbol": symbol.upper(), "date": target_date.isoformat()}
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(f"{settings.REASONING_API_URL}/analyze", json=payload)
         response.raise_for_status()
         return response.json()

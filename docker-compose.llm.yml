@@ -1,5 +1,4 @@
 services:
-
   vllm:
     image: vllm/vllm-openai:v0.10.1
     container_name: vllm
@@ -18,7 +17,6 @@ services:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
 
     volumes:
-      # PERSIST HF CACHE: Prevents downloading model weights on container restart
       - ~/.cache/huggingface:/root/.cache/huggingface
 
     command: >
@@ -26,7 +24,7 @@ services:
       --served-model-name qwen-1.5b
       --dtype auto
       --max-model-len 8192
-      --gpu-memory-utilization 0.85
+      --gpu-memory-utilization 0.90
       --enforce-eager
       --guided-decoding-backend xgrammar
       --enable-chunked-prefill
@@ -43,9 +41,10 @@ services:
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 10
+      retries: 5
+      start_period: 5m
     
     networks:
       - financial-ai-network  
