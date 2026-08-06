@@ -1,8 +1,9 @@
 name: Module 3 CI (Graph Building Engine)
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main, develop, 'feature/*']
+    branches: [ main, develop, 'feature/*' ]
     paths:
       - 'modules/graph/**'
       - '.github/workflows/module3_ci.yml'
@@ -14,7 +15,6 @@ on:
       - 'modules/graph/**'
       - '.github/workflows/module3_ci.yml'
       - 'requirements.txt'
-
 jobs:
   validate-and-test:
     name: Lint, Type Check & Test (Module 3)

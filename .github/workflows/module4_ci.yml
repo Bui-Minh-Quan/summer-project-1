@@ -1,8 +1,9 @@
 name: Module 4 CI (Reasoning Engine)
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main, develop, 'feature/*']
+    branches: [ main, develop, 'feature/*' ]
     paths:
       - 'modules/reasoning/**'
       - '.github/workflows/module4_ci.yml'

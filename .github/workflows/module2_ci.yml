@@ -1,12 +1,14 @@
 name: Module 2 CI (Knowledge Graph Extraction)
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main, develop, 'feature/*']
+    branches: [ main, develop, 'feature/*' ]
     paths:
       - 'modules/extraction/**'
       - '.github/workflows/module2_ci.yml'
       - 'requirements.txt'
+
   pull_request:
     branches: [ main, develop ]
     paths:
