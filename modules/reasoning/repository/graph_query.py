@@ -21,7 +21,6 @@ class GraphRepository:
             auth=(config.neo4j_user, config.neo4j_password)
         )
         # Lambda sets the half-life of news. 
-        # A lambda of 0.1 means news loses ~63% of its weight after 10 days.
         self.decay_lambda = 0.1
 
     async def close(self):
@@ -36,22 +35,22 @@ class GraphRepository:
         """
         date_str = target_date.strftime("%Y-%m-%d")
         
-        # Cypher query that implements the TRR Attention/Decay mechanism natively
+        # Updated Cypher query matching the Canonical Node/Edge schema from Module 3
         query = """
-        MATCH (s:Stock {symbol: $symbol})-[r]-(event)
+        MATCH (s:Entity {name: $symbol, entity_type: 'STOCK'})-[r:IMPACTS]-(other:Entity)
         
-        // 1. Filter out future events (no lookahead bias) and extremely old events
-        WHERE event.timestamp <= datetime($target_date)
-          AND duration.inDays(datetime(event.timestamp), datetime($target_date)).days <= $lookback
+        // 1. Filter out future edges (no lookahead bias) and extremely old edges
+        WHERE r.published_at <= datetime($target_date)
+          AND duration.inDays(r.published_at, datetime($target_date)).days <= $lookback
           
-        // 2. Calculate time delta in days
-        WITH s, r, event, 
-             duration.inDays(datetime(event.timestamp), datetime($target_date)).days AS delta_t
+        // 2. Calculate time delta in days based on the edge's published_at property
+        WITH s, r, other, 
+             duration.inDays(r.published_at, datetime($target_date)).days AS delta_t
              
         // 3. Apply exponential time decay: exp(-lambda * delta_t)
-        // Multiply by an engagement multiplier if available, else 1.0
-        WITH s, r, event, delta_t,
-             exp(-1.0 * $lambda_val * delta_t) * coalesce(event.total_engagement, 1.0) AS attention_score
+        // Note: Using r.confidence as a multiplier instead of total_engagement
+        WITH s, r, other, delta_t,
+             exp(-1.0 * $lambda_val * delta_t) * coalesce(r.confidence, 1.0) AS attention_score
              
         // 4. Order by the highest attention score (most recent & impactful)
         ORDER BY attention_score DESC
@@ -59,11 +58,11 @@ class GraphRepository:
         
         // 5. Format as Tuples for LLM Reasoning
         RETURN 
-            labels(event)[0] AS subject_type,
-            coalesce(event.title, event.content, event.id) AS subject_value,
-            type(r) AS relation,
-            s.symbol AS object,
-            event.timestamp AS event_date,
+            other.entity_type AS subject_type,
+            other.name AS subject_value,
+            r.relation AS relation,
+            s.name AS object,
+            r.published_at AS event_date,
             attention_score,
             delta_t
         """
@@ -89,7 +88,7 @@ class GraphRepository:
                         "attention_score": round(record["attention_score"], 4),
                         "days_ago": record["delta_t"]
                     })
-        except Exception as e: #noqa: BLE001
+        except Exception as e:
             logger.error(f"Failed to retrieve TRR subgraph for {symbol}: {e}")
             
         return records

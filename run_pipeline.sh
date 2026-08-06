@@ -2,25 +2,23 @@
 echo "🚀 Starting Financial AI Platform..."
 
 mkdir -p logs
-
-# 1. Export global environment variables
 export ROOT_DIR="$(pwd)"
 export PYTHONPATH="$ROOT_DIR"
 export VLLM_URL="http://localhost:8008/v1"
 export VLLM_BASE_URL="http://localhost:8008/v1"
 
-# 2. Clean up stale Uvicorn processes
+# 1. Clean up stale Uvicorn processes
 echo "🧹 Cleaning up existing API ports (8000, 8001, 8002)..."
 fuser -k 8000/tcp 8001/tcp 8002/tcp >/dev/null 2>&1 || true
 pkill -f uvicorn >/dev/null 2>&1 || true
 sleep 1
 
-# 3. Boot Docker infrastructure
+# 2. Boot Docker infrastructure
 echo "📦 Booting Docker containers..."
 docker compose up -d --remove-orphans
 docker compose -f docker-compose.llm.yml up -d
 
-# 4. Wait for vLLM health check
+# 3. Wait for vLLM health check
 echo "⏳ Verifying vLLM server availability on port 8008..."
 until curl -f -s http://localhost:8008/health > /dev/null; do
     echo "  Waiting for vLLM model weights to load..."
@@ -31,19 +29,20 @@ echo "✅ vLLM is ready!"
 # Clean shutdown handler for all background processes
 trap 'echo -e "\n🛑 Stopping all services..."; kill $(jobs -p) 2>/dev/null; exit' EXIT
 
-# 5. Start APIs from the root directory
+# 4. Start APIs from the root directory
 echo "🧠 Starting MLOps Serving API (port 8001)..."
 uvicorn modules.mlops.serving.api:app --port 8001 --reload > logs/mlops_api.log 2>&1 &
 
+# Added VLLM_MODEL_NAME to point to qwen-1.5b
 echo "🧠 Starting Reasoning API (port 8002)..."
-uvicorn modules.reasoning.api:app --port 8002 --reload > logs/reasoning_api.log 2>&1 &
+VLLM_MODEL_NAME="qwen-1.5b" uvicorn modules.reasoning.api:app --port 8002 --reload > logs/reasoning_api.log 2>&1 &
 
 echo "🌐 Starting Gateway API (port 8000)..."
 uvicorn app.api.main:app --port 8000 --reload > logs/gateway_api.log 2>&1 &
 
 sleep 3
 
-# 6. Start Streaming Pipelines directly from root
+# 5. Start Streaming Pipelines directly from root
 echo "📡 Starting Module 1: Data Acquisition..."
 python modules/acquisition/documents_stream.py --mode continuous > logs/mod1_docs.log 2>&1 &
 python modules/acquisition/market_stream.py --mode continuous > logs/mod1_market.log 2>&1 &
