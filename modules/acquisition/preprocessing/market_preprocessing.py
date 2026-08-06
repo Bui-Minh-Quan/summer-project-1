@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timezone
 from typing import ClassVar
 
-from models.market import MarketQuote, RawMarketQuote
+from modules.acquisition.models.market import MarketQuote, RawMarketQuote
 
 logger = logging.getLogger(__name__)
 

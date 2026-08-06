@@ -4,12 +4,14 @@ Unit tests for market preprocessing: MarketCleaner, MarketValidator, and MarketD
 
 from datetime import datetime, timezone
 
-from preprocessing.market_preprocessing import (
+from modules.acquisition.preprocessing.market_preprocessing import (
     MarketCleaner,
     MarketDeduplicator,
     MarketValidator,
 )
-from tests.fixtures.market_factories import generate_raw_market_quote
+from modules.acquisition.tests.fixtures.market_factories import (
+    generate_raw_market_quote,
+)
 
 
 class TestMarketCleaner:

@@ -9,18 +9,20 @@ import logging
 import sys
 from datetime import datetime, timezone
 
-from config import config
 from confluent_kafka.admin import AdminClient, NewTopic
-from connectors.fireant import FireAntConnector
-from models.document import Document, RawDocument
-from preprocessing.documents_preprocessing import (
+
+# Local imports
+from modules.acquisition.config import config
+from modules.acquisition.connectors.fireant import FireAntConnector
+from modules.acquisition.models.document import Document, RawDocument
+from modules.acquisition.preprocessing.documents_preprocessing import (
     DocumentCleaner,
     DocumentDeduplicator,
     DocumentValidator,
 )
-from publishers.kafka_publisher import KafkaPublisher
-from repository.mongodb import MongoRepository
-from services.documents_service import AcquisitionService
+from modules.acquisition.publishers.kafka_publisher import KafkaPublisher
+from modules.acquisition.repository.mongodb import MongoRepository
+from modules.acquisition.services.documents_service import AcquisitionService
 
 logging.basicConfig(
     level=logging.INFO,

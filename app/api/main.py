@@ -3,15 +3,16 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from core.config import settings
 from fastapi import FastAPI
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
-from jobs.populate_actuals import populate_actuals
 from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import from_url as redis_from_url
-from routers import graph, predictions, sentiment, stream
-from routers.stream import consume_kafka_market_data
+
+from app.api.core.config import settings
+from app.api.jobs.populate_actuals import populate_actuals
+from app.api.routers import graph, predictions, sentiment, stream
+from app.api.routers.stream import consume_kafka_market_data
 
 db_client: AsyncIOMotorClient | None = None
 consumer_task: asyncio.Task[Any] | None = None
@@ -27,7 +28,7 @@ async def lifespan(app: FastAPI):
     app.state.db = db_client[settings.MONGO_DB]
 
     # 2. Start Redis Cache
-    redis = redis_from_url(settings.REDIS_URL, encoding="utf8", decode_responses=True)
+    redis = redis_from_url(settings.REDIS_URL, encoding="utf8")
     FastAPICache.init(RedisBackend(redis), prefix="api-cache")
 
     # 3. Start Scheduler

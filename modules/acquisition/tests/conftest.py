@@ -1,12 +1,14 @@
 import pytest
-from publishers.kafka_publisher import KafkaPublisher
-from repository.mongodb import MongoRepository
+
+from modules.acquisition.models.document import Document
+from modules.acquisition.publishers.kafka_publisher import KafkaPublisher
+from modules.acquisition.repository.mongodb import MongoRepository
 
 TEST_MONGO_URI = "mongodb://admin:secretpassword@localhost:27017/?authSource=admin"
 TEST_DATABASE = "financial_ai_test"
 TEST_KAFKA_BROKER = "localhost:9092"
 
-from models.document import Document
+
 
 
 @pytest.fixture(scope="function")

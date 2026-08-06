@@ -9,11 +9,12 @@ import logging
 import sys
 from typing import Any
 
-from config import config
-from consumers.kafka_consumer import ExtractionKafkaConsumer
 from pymongo import MongoClient
-from repository.neo4j_repo import Neo4jRepository
-from services.graph_service import GraphService
+
+from modules.graph.config import config
+from modules.graph.consumers.kafka_consumer import ExtractionKafkaConsumer
+from modules.graph.repository.neo4j_repo import Neo4jRepository
+from modules.graph.services.graph_service import GraphService
 
 logging.basicConfig(
     level=logging.INFO,

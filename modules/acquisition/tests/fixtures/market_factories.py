@@ -4,7 +4,7 @@ Factory functions for generating synthetic raw and silver market data for testin
 
 from datetime import datetime, timedelta, timezone
 
-from models.market import RawMarketQuote
+from modules.acquisition.models.market import RawMarketQuote
 
 
 def generate_raw_market_quote(

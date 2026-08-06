@@ -45,7 +45,6 @@ class ConnectionManager:
                 self.disconnect(dead, symbol)
 
 manager = ConnectionManager()
-
 async def consume_kafka_market_data():
     """
     Background worker that listens to Kafka and broadcasts to active WebSockets.
@@ -107,3 +106,8 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket, symbol)
+
+
+@router.get("/status")
+async def get_stream_status():
+    return {"status": "streaming active", "websocket_url": "ws://localhost:8000/api/v1/stream/ws"}

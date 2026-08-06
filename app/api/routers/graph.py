@@ -2,19 +2,17 @@ import io
 import uuid
 from typing import Annotated
 
-from core.config import settings
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pypdf import PdfReader
 
+from app.api.core.config import settings
 from modules.extraction.cache.cache import LLMExtractionCache
 from modules.extraction.llm.vllm_clients import VLLMClient
-
-# Import Module 2 extraction service
 from modules.extraction.services.extraction_service import ExtractionService
 
 router = APIRouter()
 
-llm_client = VLLMClient(base_url=settings.MLOPS_API_URL.replace("8001", "8000") + "/v1") 
+llm_client = VLLMClient(base_url="http://localhost:8008/v1")
 cache = LLMExtractionCache(redis_url=settings.REDIS_URL)
 
 

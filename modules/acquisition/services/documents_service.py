@@ -1,19 +1,31 @@
 import logging
 import time
 from datetime import datetime
+from typing import Any, Protocol
 
-from connectors.base import BaseConnector
-from models.document import Document, DocumentType, RawDocument
-from preprocessing.documents_preprocessing import (
+from pydantic import BaseModel
+
+from modules.acquisition.models.document import Document, DocumentType, RawDocument
+from modules.acquisition.preprocessing.documents_preprocessing import (
     DocumentCleaner,
     DocumentDeduplicator,
     DocumentValidator,
 )
-from publishers.kafka_publisher import KafkaPublisher
-from pydantic import BaseModel
-from repository.mongodb import MongoRepository
+from modules.acquisition.publishers.kafka_publisher import KafkaPublisher
+from modules.acquisition.repository.mongodb import MongoRepository
 
 logger = logging.getLogger("acquisition_service")
+
+# 1. Define a Protocol to guarantee abstraction and type safety for any future connector
+class DocumentConnectorProtocol(Protocol):
+    @property
+    def source_name(self) -> str: ...
+    
+    def fetch_latest(self, **kwargs: Any) -> list[RawDocument]: ...
+    
+    def fetch_history(self, start_date: datetime, end_date: datetime, **kwargs: Any) -> list[RawDocument]: ...
+    
+    def map_document(self, raw: RawDocument) -> Document | None: ...
 
 
 class PipelineReport(BaseModel):
@@ -32,7 +44,7 @@ class PipelineReport(BaseModel):
 class AcquisitionService:
     def __init__(
         self,
-        connector: BaseConnector,
+        connector: DocumentConnectorProtocol, # 2. Use the Protocol for strict abstraction
         raw_repository: MongoRepository,
         document_repository: MongoRepository,
         cleaner: DocumentCleaner,
@@ -119,40 +131,13 @@ class AcquisitionService:
         return report
 
     # Execution modes
-    def run_backfill(self, start_date, end_date: datetime) -> PipelineReport:
+    def run_backfill(self, start_date: datetime, end_date: datetime) -> PipelineReport:
         # Mode 1: Historical backfill
         logger.info(f"Starting backfill mode: {start_date} -> {end_date}")
-
-        if hasattr(self.connector, "_crawl_feed"):
-            from models.document import DocumentType
-
-            logger.info("Fetching and processing POSTS...")
-            raw_posts = self.connector._crawl_feed(
-                doc_type=DocumentType.POST, limit=100000, start_date=start_date, end_date=end_date
-            )
-            post_report = self._process_pipeline(raw_posts)
-
-            logger.info("Fetching and processing NEWS...")
-            raw_news = self.connector._crawl_feed(
-                doc_type=DocumentType.NEWS, limit=100000, start_date=start_date, end_date=end_date
-            )
-            news_report = self._process_pipeline(raw_news)
-
-            # Sum ALL metric fields across both POSTS and NEWS runs
-            post_report.fetched += news_report.fetched
-            post_report.raw_saved += news_report.raw_saved
-            post_report.mapped += news_report.mapped
-            post_report.cleaned += news_report.cleaned
-            post_report.invalid += news_report.invalid
-            post_report.duplicates += news_report.duplicates
-            post_report.stored += news_report.stored
-            post_report.published += news_report.published
-            post_report.duration += news_report.duration
-
-            return post_report
-        else:
-            raw_docs = self.connector.fetch_history(start_date=start_date, end_date=end_date)
-            return self._process_pipeline(raw_docs)
+        
+        # 3. Use abstract fetch_history instead of hardcoding FireAnt's _crawl_feed
+        raw_docs = self.connector.fetch_history(start_date=start_date, end_date=end_date)
+        return self._process_pipeline(raw_docs)
         
     def run_continuous(self, interval_seconds: int = 300, batch_limit: int = 500):
         # Mode 2: Continuous streaming
@@ -170,15 +155,15 @@ class AcquisitionService:
                     source=src, doc_type=DocumentType.POST.value
                 )
 
-                # 2. Fetch latest data
+                # 2. Fetch latest data abstractly via fetch_latest with kwargs
                 logger.info(f"Fetching news since watermark: {news_watermark}")
-                latest_news = self.connector.fetch_latest_news(
-                    limit=batch_limit, since_timestamp=news_watermark
+                latest_news = self.connector.fetch_latest(
+                    limit=batch_limit, doc_type="news", since_timestamp=news_watermark
                 )
 
-                logger.info(f"Fetch posts since watermark: {posts_watermark}")
-                latest_posts = self.connector.fetch_latest_posts(
-                    limit=batch_limit, since_timestamp=posts_watermark
+                logger.info(f"Fetching posts since watermark: {posts_watermark}")
+                latest_posts = self.connector.fetch_latest(
+                    limit=batch_limit, doc_type="posts", since_timestamp=posts_watermark
                 )
 
                 all_raw = latest_news + latest_posts
@@ -192,7 +177,7 @@ class AcquisitionService:
                 else:
                     logger.info("💤 No new documents found on server.")
 
-                # 4. Sleep untill next cycle
+                # 4. Sleep until next cycle
                 logger.info(f"Sleeping for {interval_seconds} seconds...\n")
                 time.sleep(interval_seconds)
 

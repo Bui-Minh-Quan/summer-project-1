@@ -2,7 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from main import app
+
+from app.api.main import app
 
 
 @pytest.fixture
@@ -14,14 +15,14 @@ def mock_db():
 def override_lifespan_dependencies(mock_db):
     """Intercepts lifespan initializations to prevent real DB/Redis connections."""
     
-    # When main.py calls AsyncIOMotorClient()[settings.MONGO_DB], it returns mock_db
+    # When app/api/main.py calls AsyncIOMotorClient()[settings.MONGO_DB], it returns mock_db
     mock_client = MagicMock()
     mock_client.__getitem__.return_value = mock_db
 
-    with patch("main.AsyncIOMotorClient", return_value=mock_client), \
-         patch("main.redis_from_url", AsyncMock()), \
-         patch("main.FastAPICache.init"), \
-         patch("main.consume_kafka_market_data", AsyncMock()), \
+    with patch("app.api.main.AsyncIOMotorClient", return_value=mock_client), \
+         patch("app.api.main.redis_from_url", AsyncMock()), \
+         patch("app.api.main.FastAPICache.init"), \
+         patch("app.api.main.consume_kafka_market_data", AsyncMock()), \
          patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.start"), \
          patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.add_job"):
         

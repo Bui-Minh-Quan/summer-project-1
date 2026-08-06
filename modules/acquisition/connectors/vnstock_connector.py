@@ -9,10 +9,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
-from models.market import RawMarketQuote
 from pydantic import ValidationError
 
-from connectors.base import BaseConnector
+from modules.acquisition.connectors.base import BaseConnector
+from modules.acquisition.models.market import RawMarketQuote
 
 logger = logging.getLogger(__name__)
 

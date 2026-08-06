@@ -5,9 +5,10 @@ Runs against local containerized Neo4j database (bolt://localhost:7687).
 
 import pytest
 import pytest_asyncio
-from config import config
-from repository.neo4j_repo import Neo4jRepository
-from services.graph_service import GraphService
+
+from modules.graph.config import config
+from modules.graph.repository.neo4j_repo import Neo4jRepository
+from modules.graph.services.graph_service import GraphService
 
 
 @pytest_asyncio.fixture

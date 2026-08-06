@@ -6,8 +6,9 @@ import logging
 from typing import Any, Generic, TypeVar
 
 from confluent_kafka import KafkaError, Producer
-from publishers.base import BasePublisher
 from pydantic import BaseModel
+
+from modules.extraction.publishers.base import BasePublisher
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)

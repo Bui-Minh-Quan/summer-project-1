@@ -2,7 +2,7 @@ name: Module 3 CI (Graph Building Engine)
 
 on:
   push:
-    branches: [ main, develop, feature/* ]
+    branches: [main, develop, 'feature/*']
     paths:
       - 'modules/graph/**'
       - '.github/workflows/module3_ci.yml'

@@ -20,3 +20,6 @@ mlruns/
 # Ignore raw data files; DVC manages them via .dvc pointers
 data/gold_features.parquet
 !data/*.dvc
+
+# Logs files
+logs/*

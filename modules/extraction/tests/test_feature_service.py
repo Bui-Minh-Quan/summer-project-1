@@ -6,7 +6,8 @@ Verifies social post engagement math and net sentiment calculation.
 from unittest.mock import MagicMock
 
 import pytest
-from services.feature_service import FeatureEngineeringService
+
+from modules.extraction.services.feature_service import FeatureEngineeringService
 
 
 @pytest.mark.asyncio

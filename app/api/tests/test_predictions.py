@@ -27,8 +27,8 @@ def test_get_dual_prediction_success(client, mock_db):
         "reasoning": "Strong Q3 growth and expanding margins.",
     }
 
-    with patch("routers.predictions.fetch_mlops_prediction", AsyncMock(return_value=mock_mlops_resp)), \
-         patch("routers.predictions.fetch_reasoning", AsyncMock(return_value=mock_reasoning_resp)):
+    with patch("app.api.routers.predictions.fetch_mlops_prediction", AsyncMock(return_value=mock_mlops_resp)), \
+         patch("app.api.routers.predictions.fetch_reasoning", AsyncMock(return_value=mock_reasoning_resp)):
 
         response = client.post("/api/v1/predictions/", json={"symbol": "FPT"})
 

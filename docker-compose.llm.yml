@@ -1,5 +1,4 @@
 services:
-
   vllm:
     image: vllm/vllm-openai:v0.10.1
     container_name: vllm
@@ -7,11 +6,18 @@ services:
     runtime: nvidia
     ipc: host
 
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
     ports:
-      - "8000:8000"
+      - "8008:8000"
 
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
 
     command: >
       --model Qwen/Qwen2.5-1.5B-Instruct-GPTQ-Int4
@@ -19,6 +25,7 @@ services:
       --dtype auto
       --max-model-len 8192
       --gpu-memory-utilization 0.90
+      --enforce-eager
       --guided-decoding-backend xgrammar
       --enable-chunked-prefill
       --max-num-seqs 8
@@ -34,9 +41,10 @@ services:
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 20s
-      timeout: 10s
-      retries: 10
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5m
     
     networks:
       - financial-ai-network  

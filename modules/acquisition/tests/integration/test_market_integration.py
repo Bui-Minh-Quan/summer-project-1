@@ -5,8 +5,8 @@ Integration tests for market pipeline with real or containerized MongoDB and Kaf
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
-from services.market_service import MarketAcquisitionService
-from tests.fixtures.market_factories import generate_market_batch
+from modules.acquisition.services.market_service import MarketAcquisitionService
+from modules.acquisition.tests.fixtures.market_factories import generate_market_batch
 
 
 def test_market_service_pipeline_storage_and_publishing(

@@ -8,12 +8,15 @@ import logging
 import sys
 from typing import Any
 
-from config import config
-from consumers.kafka_consumer import MarketDataKafkaConsumer, PostFeatureKafkaConsumer
-from models.features import MarketSentimentFeatureVector
-from publishers.kafka_publisher import KafkaPublisher  # NEW IMPORT
-from repository.mongodb import MongoRepository
-from services.feature_service import FeatureEngineeringService
+from modules.extraction.config import config
+from modules.extraction.consumers.kafka_consumer import (
+    MarketDataKafkaConsumer,
+    PostFeatureKafkaConsumer,
+)
+from modules.extraction.models.features import MarketSentimentFeatureVector
+from modules.extraction.publishers.kafka_publisher import KafkaPublisher  # NEW IMPORT
+from modules.extraction.repository.mongodb import MongoRepository
+from modules.extraction.services.feature_service import FeatureEngineeringService
 
 logging.basicConfig(
     level=logging.INFO,

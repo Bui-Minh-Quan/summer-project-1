@@ -6,9 +6,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from models.extraction import ExtractionResult
-
-from services.extraction_service import ExtractionService
+from modules.extraction.models.extraction import ExtractionResult
+from modules.extraction.services.extraction_service import ExtractionService
 
 logger = logging.getLogger(__name__)
 

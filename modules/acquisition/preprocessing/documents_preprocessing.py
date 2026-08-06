@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 from typing import ClassVar
 
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
-from models.document import Document, DocumentType, Language
-from repository.mongodb import MongoRepository
+
+from modules.acquisition.models.document import Document, DocumentType, Language
+from modules.acquisition.repository.mongodb import MongoRepository
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 

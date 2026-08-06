@@ -9,8 +9,8 @@ from typing import Any
 
 import httpx
 
-from llm.base import BaseLLMClient
-from llm.models import LLMRequest, LLMResponse, LLMUsageTelemetry
+from modules.extraction.llm.base import BaseLLMClient
+from modules.extraction.llm.models import LLMRequest, LLMResponse, LLMUsageTelemetry
 
 logger = logging.getLogger(__name__)
 

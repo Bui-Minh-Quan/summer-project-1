@@ -2,7 +2,7 @@ name: Module 2 CI (Knowledge Graph Extraction)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop, 'feature/*']
     paths:
       - 'modules/extraction/**'
       - '.github/workflows/module2_ci.yml'
