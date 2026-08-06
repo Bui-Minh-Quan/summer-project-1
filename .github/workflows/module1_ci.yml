@@ -2,11 +2,11 @@ name: Acquisition Module CI Pipeline
 
 on:
   push:
-   branches: [main, develop, 'feature/*']
-   paths: 
-    - 'modules/acquisition/**'
-    - '.github/workflows/acquisition-ci.yml'
-    - 'requirements.txt'
+    branches: [main, develop, 'feature/*']
+    paths: 
+      - 'modules/acquisition/**'
+      - '.github/workflows/acquisition-ci.yml'
+      - 'requirements.txt'
 
   pull_request:
     branches: [ main ]
