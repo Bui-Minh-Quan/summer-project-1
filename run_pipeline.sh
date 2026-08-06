@@ -6,43 +6,46 @@ export ROOT_DIR="$(pwd)"
 export PYTHONPATH="$ROOT_DIR"
 export VLLM_URL="http://localhost:8008/v1"
 export VLLM_BASE_URL="http://localhost:8008/v1"
+export VLLM_MODEL_NAME="qwen-1.5b"
 
-# 1. Clean up stale Uvicorn processes
+# 1. Clean up stale Uvicorn processes only
 echo "🧹 Cleaning up existing API ports (8000, 8001, 8002)..."
 fuser -k 8000/tcp 8001/tcp 8002/tcp >/dev/null 2>&1 || true
 pkill -f uvicorn >/dev/null 2>&1 || true
-sleep 1
 
-# 2. Boot Docker infrastructure
-echo "📦 Booting Docker containers..."
-docker compose up -d --remove-orphans
-docker compose -f docker-compose.llm.yml up -d
+# 2. Check if Docker infrastructure is already running
+if ! curl -f -s http://localhost:8008/health > /dev/null; then
+    echo "📦 Booting Docker containers (First-time or stopped state)..."
+    docker compose up -d --no-recreate
+    docker compose -f docker-compose.llm.yml up -d --no-recreate
 
-# 3. Wait for vLLM health check
-echo "⏳ Verifying vLLM server availability on port 8008..."
-until curl -f -s http://localhost:8008/health > /dev/null; do
-    echo "  Waiting for vLLM model weights to load..."
-    sleep 30
-done
-echo "✅ vLLM is ready!"
+    echo "⏳ Verifying vLLM availability on http://localhost:8008/health..."
+    until curl -f -s http://localhost:8008/health > /dev/null; do
+        echo "  Waiting for vLLM..."
+        sleep 30
+    done
+else
+    echo "⚡ Docker infrastructure & vLLM are already running! Skipping container boot."
+fi
 
-# Clean shutdown handler for all background processes
-trap 'echo -e "\n🛑 Stopping all services..."; kill $(jobs -p) 2>/dev/null; exit' EXIT
+echo "✅ Infrastructure is ready!"
 
-# 4. Start APIs from the root directory
+# Clean shutdown handler (Kills ONLY Python background processes, leaves Docker containers alive)
+trap 'echo -e "\n🛑 Stopping Python application processes..."; kill $(jobs -p) 2>/dev/null; exit' EXIT
+
+# 3. Start internal APIs
 echo "🧠 Starting MLOps Serving API (port 8001)..."
 uvicorn modules.mlops.serving.api:app --port 8001 --reload > logs/mlops_api.log 2>&1 &
 
-# Added VLLM_MODEL_NAME to point to qwen-1.5b
 echo "🧠 Starting Reasoning API (port 8002)..."
-VLLM_MODEL_NAME="qwen-1.5b" uvicorn modules.reasoning.api:app --port 8002 --reload > logs/reasoning_api.log 2>&1 &
+uvicorn modules.reasoning.api:app --port 8002 --reload > logs/reasoning_api.log 2>&1 &
 
 echo "🌐 Starting Gateway API (port 8000)..."
 uvicorn app.api.main:app --port 8000 --reload > logs/gateway_api.log 2>&1 &
 
-sleep 3
+sleep 2
 
-# 5. Start Streaming Pipelines directly from root
+# 4. Start Streaming Pipelines
 echo "📡 Starting Module 1: Data Acquisition..."
 python modules/acquisition/documents_stream.py --mode continuous > logs/mod1_docs.log 2>&1 &
 python modules/acquisition/market_stream.py --mode continuous > logs/mod1_market.log 2>&1 &
@@ -56,9 +59,9 @@ python modules/graph/graph_stream.py --mode continuous > logs/mod3_graph.log 2>&
 
 echo ""
 echo "=================================================="
-echo "✅ All services are up and running cleanly!"
-echo "📁 Logs are saved in the 'logs/' folder."
-echo "Press Ctrl+C to stop all background processes."
+echo "✅ Application services running!"
+echo "📁 Logs: 'tail -f logs/<service>.log'"
+echo "Press Ctrl+C to stop app processes (Docker stays alive)."
 echo "=================================================="
 echo ""
 
