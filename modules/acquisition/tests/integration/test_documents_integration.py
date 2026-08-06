@@ -1,16 +1,21 @@
 from datetime import datetime, timezone
 
-from conftest import TEST_DATABASE, TEST_MONGO_URI
-from connectors.fireant import FireAntConnector
-from models.document import Document, DocumentType, Language, RawDocument
-from preprocessing.documents_preprocessing import (
+from modules.acquisition.connectors.fireant import FireAntConnector
+from modules.acquisition.models.document import (
+    Document,
+    DocumentType,
+    Language,
+    RawDocument,
+)
+from modules.acquisition.preprocessing.documents_preprocessing import (
     DocumentCleaner,
     DocumentDeduplicator,
     DocumentValidator,
 )
-from publishers.kafka_publisher import KafkaPublisher
-from repository.mongodb import MongoRepository
-from services.documents_service import AcquisitionService
+from modules.acquisition.publishers.kafka_publisher import KafkaPublisher
+from modules.acquisition.repository.mongodb import MongoRepository
+from modules.acquisition.services.documents_service import AcquisitionService
+from modules.acquisition.tests.conftest import TEST_DATABASE, TEST_MONGO_URI
 
 
 def test_publish_batch_to_broker(kafka_publisher: KafkaPublisher):

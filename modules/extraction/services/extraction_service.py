@@ -10,19 +10,19 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from cache.cache import LLMExtractionCache
-from llm.base import BaseLLMClient
-from llm.models import LLMRequest
-from models.extraction import (
+from modules.extraction.models.extraction import (
     ExtractionMetadata,
     ExtractionResult,
     GraphRelation,
     RelationalExtractionPayload,
 )
-from models.ontology import EntityType
-from prompts.templates import ExtractionPromptManager
-from publishers.base import BasePublisher
-from repository.base import BaseRepository
+from modules.extraction.cache.cache import LLMExtractionCache
+from modules.extraction.llm.base import BaseLLMClient
+from modules.extraction.llm.models import LLMRequest
+from modules.extraction.models.ontology import EntityType
+from modules.extraction.prompts.templates import ExtractionPromptManager
+from modules.extraction.publishers.base import BasePublisher
+from modules.extraction.repository.base import BaseRepository
 
 logger = logging.getLogger(__name__)
 

@@ -7,11 +7,12 @@ import logging
 import time
 from typing import Any
 
-from config import config
-from models.models import CanonicalEdge
 from pydantic import BaseModel
-from repository.neo4j_repo import Neo4jRepository
-from services.canonicalizer import GraphCanonicalizer
+
+from modules.graph.config import config
+from modules.graph.models.models import CanonicalEdge
+from modules.graph.repository.neo4j_repo import Neo4jRepository
+from modules.graph.services.canonicalizer import GraphCanonicalizer
 
 logger = logging.getLogger(__name__)
 

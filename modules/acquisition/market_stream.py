@@ -9,13 +9,17 @@ import logging
 import sys
 from datetime import datetime, timezone
 
-from config import config
 from confluent_kafka.admin import AdminClient, NewTopic
-from connectors.vnstock_connector import DEFAULT_WATCHLIST, VnstockConnector
-from models.market import MarketQuote
-from publishers.kafka_publisher import KafkaPublisher
-from repository.mongodb import MongoRepository
-from services.market_service import MarketAcquisitionService
+
+from modules.acquisition.config import config
+from modules.acquisition.connectors.vnstock_connector import (
+    DEFAULT_WATCHLIST,
+    VnstockConnector,
+)
+from modules.acquisition.models.market import MarketQuote
+from modules.acquisition.publishers.kafka_publisher import KafkaPublisher
+from modules.acquisition.repository.mongodb import MongoRepository
+from modules.acquisition.services.market_service import MarketAcquisitionService
 
 # Configure structured console logging
 logging.basicConfig(

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
-from models.ontology import EntityType, MarketImpact
+from modules.extraction.models.ontology import EntityType, MarketImpact
 
 # =====================================================================
 # SCHEMA: Relational Graph Reasoning (TRR Chains)

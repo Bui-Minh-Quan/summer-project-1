@@ -9,14 +9,14 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from connectors.base import BaseConnector
-from models.market import MarketQuote, RawMarketQuote
-from preprocessing.market_preprocessing import (
+from modules.acquisition.connectors.base import BaseConnector
+from modules.acquisition.models.market import MarketQuote, RawMarketQuote
+from modules.acquisition.preprocessing.market_preprocessing import (
     MarketCleaner,
     MarketDeduplicator,
     MarketValidator,
 )
-from repository.base import BaseRepository
+from modules.acquisition.repository.base import BaseRepository
 
 logger = logging.getLogger(__name__)
 

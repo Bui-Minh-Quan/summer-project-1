@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from llm.models import LLMRequest, LLMResponse
+from modules.extraction.llm.models import LLMRequest, LLMResponse
 
 
 class BaseLLMClient(ABC):

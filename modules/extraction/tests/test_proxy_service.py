@@ -6,7 +6,8 @@ Verifies that social posts and non-news items are rejected before reaching vLLM.
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from services.proxy_service import NewsOnlyServiceProxy
+
+from modules.extraction.services.proxy_service import NewsOnlyServiceProxy
 
 
 @pytest.mark.asyncio

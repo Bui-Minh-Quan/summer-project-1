@@ -5,9 +5,9 @@ Verifies removal of Anti-Super Nodes, self-loops, and short/numeric entities.
 
 from unittest.mock import MagicMock
 
-from models.extraction import EntityNode, GraphRelation
-from models.ontology import EntityType, MarketImpact
-from services.extraction_service import ExtractionService
+from modules.extraction.models.extraction import EntityNode, GraphRelation
+from modules.extraction.models.ontology import EntityType, MarketImpact
+from modules.extraction.services.extraction_service import ExtractionService
 
 
 def test_anti_super_node_and_self_loop_sanitizer():

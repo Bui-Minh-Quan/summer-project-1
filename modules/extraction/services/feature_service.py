@@ -7,9 +7,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from models.features import MarketQuoteInput, MarketSentimentFeatureVector
-from publishers.base import BasePublisher
-from repository.mongodb import MongoRepository
+from modules.extraction.models.features import (
+    MarketQuoteInput,
+    MarketSentimentFeatureVector,
+)
+from modules.extraction.publishers.base import BasePublisher
+from modules.extraction.repository.mongodb import MongoRepository
 
 logger = logging.getLogger(__name__)
 

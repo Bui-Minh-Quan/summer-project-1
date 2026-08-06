@@ -10,7 +10,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import BulkWriteError
 
-from repository.base import BaseRepository
+from modules.extraction.repository.base import BaseRepository
 
 T = TypeVar("T", bound=BaseModel)
 

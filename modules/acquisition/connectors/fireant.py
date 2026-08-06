@@ -7,11 +7,16 @@ from typing import Any
 
 import requests
 from dateutil import parser
-from models.document import Document, DocumentType, Language, RawDocument
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from connectors.base import BaseConnector
+from modules.acquisition.connectors.base import BaseConnector
+from modules.acquisition.models.document import (
+    Document,
+    DocumentType,
+    Language,
+    RawDocument,
+)
 
 logger = logging.getLogger("fireant_connector")
 
@@ -105,7 +110,7 @@ class FireAntConnector(BaseConnector):
         )
 
     def fetch_history(
-        self, start_date: datetime, end_date: datetime
+        self, start_date: datetime, end_date: datetime, **kwargs: Any
     ) -> list[RawDocument]:
         # Fetch all posts and news published within a specific historical time window.
 
@@ -136,16 +141,18 @@ class FireAntConnector(BaseConnector):
     def fetch_latest(
         self, limit: int = 50, doc_type: str = "all", **kwargs: Any
     ) -> list[RawDocument]:
+        # Extract the watermark from kwargs to maintain the BaseConnector signature
+        since = kwargs.get("since_timestamp")
+        
         if doc_type == "news":
-            return self.fetch_latest_news(limit=limit)
+            return self.fetch_latest_news(limit=limit, since_timestamp=since)
         if doc_type == "posts":
-            return self.fetch_latest_posts(limit=limit)
+            return self.fetch_latest_posts(limit=limit, since_timestamp=since)
 
         news_limit = max(1, limit // 10)
         posts_limit = max(1, limit - news_limit)
-        return self.fetch_latest_posts(limit=posts_limit) + self.fetch_latest_news(
-            limit=news_limit
-        )
+        return self.fetch_latest_posts(limit=posts_limit, since_timestamp=since) + \
+               self.fetch_latest_news(limit=news_limit, since_timestamp=since)
 
     def map_document(self, raw: RawDocument) -> Document | None:
         try:

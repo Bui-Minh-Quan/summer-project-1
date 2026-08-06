@@ -10,17 +10,18 @@ import logging
 import sys
 from typing import Any
 
-from cache.cache import LLMExtractionCache
-from config import config
 from confluent_kafka.admin import AdminClient, NewTopic
 from consumers.kafka_consumer import DocumentKafkaConsumer
-from llm.vllm_clients import VLLMClient
-from models.extraction import ExtractionResult
-from prompts.templates import VN30_ALIAS_MAP
-from publishers.kafka_publisher import KafkaPublisher
-from repository.mongodb import MongoRepository
-from services.extraction_service import ExtractionService
-from services.proxy_service import NewsOnlyServiceProxy
+
+from modules.extraction.cache.cache import LLMExtractionCache
+from modules.extraction.config import config
+from modules.extraction.llm.vllm_clients import VLLMClient
+from modules.extraction.models.extraction import ExtractionResult
+from modules.extraction.prompts.templates import VN30_ALIAS_MAP
+from modules.extraction.publishers.kafka_publisher import KafkaPublisher
+from modules.extraction.repository.mongodb import MongoRepository
+from modules.extraction.services.extraction_service import ExtractionService
+from modules.extraction.services.proxy_service import NewsOnlyServiceProxy
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,10 +44,10 @@ def bootstrap_infrastructure(
     # 1. MongoDB indices for fast graph querying and idempotency checks
     try:
         extraction_repo.collection.create_index([("document_id", 1)], unique=True, name="idx_unique_staged_doc_id")
-        extraction_repo.collection.create_index([("relations.subject.name", 1)], name="idx_rel_subject_name")
-        extraction_repo.collection.create_index([("relations.object.name", 1)], name="idx_rel_object_name")
+        extraction_repo.collection.create_index([("relations.subject.name", 1)])
+        extraction_repo.collection.create_index([("relations.object.name", 1)])
         logger.info("✅ MongoDB indices verified on 'staged_graph_knowledge' collection.")
-    except Exception as e:  # noqa: BLE001
+    except Exception as e: # noqa: BLE001
         logger.warning(f"⚠️ Notice during MongoDB index verification: {e!s}")
 
     # 2. Pre-create Kafka output topic via AdminClient

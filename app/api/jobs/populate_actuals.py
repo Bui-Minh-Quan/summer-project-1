@@ -1,9 +1,10 @@
 import asyncio
 import logging
 
-from core.config import settings
 from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import from_url as redis_from_url
+
+from app.api.core.config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("populate_actuals_job")
@@ -83,7 +84,7 @@ async def populate_actuals():
             updated_count += 1
 
     if updated_count > 0:
-        redis = redis_from_url(settings.REDIS_URL, encoding="utf8", decode_responses=True)
+        redis = redis_from_url(settings.REDIS_URL, encoding="utf8")
         keys = await redis.keys("api-cache:*backtest*")
         if keys:
             await redis.delete(*keys)

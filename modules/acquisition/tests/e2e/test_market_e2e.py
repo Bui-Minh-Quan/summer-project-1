@@ -5,8 +5,8 @@ End-to-end tests for MarketAcquisitionService running backfill and continuous st
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
-from services.market_service import MarketAcquisitionService
-from tests.fixtures.market_factories import generate_market_batch
+from modules.acquisition.services.market_service import MarketAcquisitionService
+from modules.acquisition.tests.fixtures.market_factories import generate_market_batch
 
 
 def test_e2e_market_backfill_workflow(mongo_repo, kafka_publisher) -> None:

@@ -8,7 +8,8 @@ from datetime import datetime
 from typing import Any
 
 from confluent_kafka import Consumer, KafkaError
-from models.features import MarketQuoteInput
+
+from modules.extraction.models.features import MarketQuoteInput
 
 logger = logging.getLogger(__name__)
 

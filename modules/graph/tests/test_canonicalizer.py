@@ -2,7 +2,7 @@
 Unit tests for GraphCanonicalizer entity validation, stock normalization, and hashing.
 """
 
-from services.canonicalizer import GraphCanonicalizer
+from modules.graph.services.canonicalizer import GraphCanonicalizer
 
 
 def test_is_valid_entity_name() -> None:

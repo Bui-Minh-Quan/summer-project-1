@@ -1,15 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
-from connectors.fireant import FireAntConnector
-from preprocessing.documents_preprocessing import (
+from modules.acquisition.connectors.fireant import FireAntConnector
+from modules.acquisition.preprocessing.documents_preprocessing import (
     DocumentCleaner,
     DocumentDeduplicator,
     DocumentValidator,
 )
-from repository.mongodb import MongoRepository
-from services.documents_service import AcquisitionService
-from tests.fixtures.document_factories import generate_fireant_batch
+from modules.acquisition.repository.mongodb import MongoRepository
+from modules.acquisition.services.documents_service import AcquisitionService
+from modules.acquisition.tests.fixtures.document_factories import generate_fireant_batch
 
 
 def test_e2e_historical_backfill_execution(mongo_repo, kafka_publisher):

@@ -4,8 +4,9 @@ Asynchronous Neo4j repository executing idempotent Cypher UNWIND batch ingestion
 
 import logging
 
-from models.models import CanonicalEdge
 from neo4j import AsyncDriver, AsyncGraphDatabase
+
+from modules.graph.models.models import CanonicalEdge
 
 logger = logging.getLogger(__name__)
 

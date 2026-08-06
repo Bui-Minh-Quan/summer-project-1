@@ -1,9 +1,14 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
-from connectors.fireant import FireAntConnector
-from models.document import Document, DocumentType, Language, RawDocument
-from preprocessing.documents_preprocessing import (
+from modules.acquisition.connectors.fireant import FireAntConnector
+from modules.acquisition.models.document import (
+    Document,
+    DocumentType,
+    Language,
+    RawDocument,
+)
+from modules.acquisition.preprocessing.documents_preprocessing import (
     DocumentCleaner,
     DocumentDeduplicator,
     DocumentValidator,
