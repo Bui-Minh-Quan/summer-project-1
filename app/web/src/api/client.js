@@ -17,13 +17,13 @@ const apiClient = axios.create({
 
 /**
  * Fetch Dual Prediction (XGBoost 5-day regression + vLLM TRR Reasoning)
- * Endpoint: POST /api/v1/predictions/
+ * Endpoint: GET /api/v1/predictions/{symbol}
  */
 export const getDualPrediction = async (symbol, date = null) => {
-  const payload = { symbol: symbol.toUpperCase() };
-  if (date) payload.date = date;
+  const params = {};
+  if (date) params.date = date;
   
-  const response = await apiClient.post('/predictions/', payload);
+  const response = await apiClient.get(`/predictions/${symbol.toUpperCase()}`, { params });
   return response.data;
 };
 
@@ -94,3 +94,15 @@ export const extractKnowledgeGraph = async (file) => {
 };
 
 export default apiClient;
+
+
+/**
+ * Fetch Historical Market Bars for Chart Hydration
+ * Endpoint: GET /api/v1/stream/history/{symbol}
+ */
+export const getMarketHistory = async (symbol, limit = 30) => {
+  const response = await apiClient.get(`/stream/history/${symbol.toUpperCase()}`, {
+    params: { limit },
+  });
+  return response.data;
+};

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -15,6 +16,9 @@ from app.api.jobs.populate_actuals import populate_actuals
 from app.api.routers import graph, predictions, sentiment, stream
 from app.api.routers.stream import consume_kafka_market_data
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("api_main")
+
 db_client: AsyncIOMotorClient | None = None
 consumer_task: asyncio.Task[Any] | None = None
 scheduler: AsyncIOScheduler | None = None
@@ -29,8 +33,15 @@ async def lifespan(app: FastAPI):
     app.state.db = db_client[settings.MONGO_DB]
 
     # 2. Start Redis Cache
-    redis = redis_from_url(settings.REDIS_URL, encoding="utf8")
-    FastAPICache.init(RedisBackend(redis), prefix="api-cache")
+    try:
+        redis = redis_from_url(settings.REDIS_URL)
+        pong = await redis.ping()
+        logger.info(f"🔴 [REDIS CACHE INIT SUCCESS] Connected to Redis at {settings.REDIS_URL}. Ping: {pong}")
+        FastAPICache.init(RedisBackend(redis), prefix="api-cache")
+    except Exception as e:
+        logger.error(f"❌ [REDIS CACHE INIT ERROR] Failed to initialize FastAPICache with Redis: {e}", exc_info=True)
+
+    # 3. Start Scheduler
 
     # 3. Start Scheduler
     scheduler = AsyncIOScheduler()

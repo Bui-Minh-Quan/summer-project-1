@@ -28,7 +28,7 @@ class ReasoningConfig(BaseSettings):
         alias="MONGO_URI",
     )
     mongo_db: str = "financial_ai"
-    mongo_collection: str = "silver_market"  # Adjust if using gold_market_features
+    mongo_collection: str = "silver_market_quotes" # Adjust if using gold_market_features
 
     # TRR (Temporal Relational Reasoning) Settings
     lookback_days: int = Field(default=30, description="How many days of history to fetch")

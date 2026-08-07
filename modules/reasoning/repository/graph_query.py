@@ -33,30 +33,18 @@ class GraphRepository:
         Retrieves the pruned TRR graph (G_TRR) using native Cypher temporal decay.
         Returns paths as structured tuples.
         """
-        date_str = target_date.strftime("%Y-%m-%d")
+        # FIX: Removed `date_str = target_date.strftime("%Y-%m-%d")`
         
-        # Updated Cypher query matching the Canonical Node/Edge schema from Module 3
         query = """
         MATCH (s:Entity {name: $symbol, entity_type: 'STOCK'})-[r:IMPACTS]-(other:Entity)
-        
-        // 1. Filter out future edges (no lookahead bias) and extremely old edges
         WHERE r.published_at <= datetime($target_date)
           AND duration.inDays(r.published_at, datetime($target_date)).days <= $lookback
-          
-        // 2. Calculate time delta in days based on the edge's published_at property
         WITH s, r, other, 
              duration.inDays(r.published_at, datetime($target_date)).days AS delta_t
-             
-        // 3. Apply exponential time decay: exp(-lambda * delta_t)
-        // Note: Using r.confidence as a multiplier instead of total_engagement
         WITH s, r, other, delta_t,
              exp(-1.0 * $lambda_val * delta_t) * coalesce(r.confidence, 1.0) AS attention_score
-             
-        // 4. Order by the highest attention score (most recent & impactful)
         ORDER BY attention_score DESC
         LIMIT $top_k
-        
-        // 5. Format as Tuples for LLM Reasoning
         RETURN 
             other.entity_type AS subject_type,
             other.name AS subject_value,
@@ -73,7 +61,8 @@ class GraphRepository:
                 result = await session.run(
                     query, 
                     symbol=symbol, 
-                    target_date=f"{date_str}T00:00:00Z",
+                    # FIX: Pass the exact timestamp, preserving hours and minutes
+                    target_date=target_date.isoformat(), 
                     lookback=config.lookback_days,
                     lambda_val=self.decay_lambda,
                     top_k=top_k
@@ -88,7 +77,7 @@ class GraphRepository:
                         "attention_score": round(record["attention_score"], 4),
                         "days_ago": record["delta_t"]
                     })
-        except Exception as e: #noqa: BLE001
+        except Exception as e:
             logger.error(f"Failed to retrieve TRR subgraph for {symbol}: {e}")
             
         return records
