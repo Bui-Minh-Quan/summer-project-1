@@ -3,7 +3,7 @@ import { Activity, Flame, ChevronDown } from 'lucide-react';
 import { useMarketStream } from '../../api/websocket';
 
 const VN30_SYMBOLS = [
-  "ACB", "BID", "CTG", "DGC", "FPT", "GAS", "GVR", "HDB", "HPG", "LPB", 
+  "ACB", "BID", "CTG", "DGC", "FPT", "GAS", "GVR", "HPG", "LPB", 
   "MBB", "MSN", "MWG", "PLX", "SAB", "SHB", "SSB", "SSI", "STB", "TCB", 
   "TPB", "VCB", "VHM", "VIB", "VIC", "VJC", "VNM", "VPB", "VPL", "VRE"
 ];

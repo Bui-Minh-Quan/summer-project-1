@@ -4,7 +4,13 @@ import logging
 import os
 
 from confluent_kafka import Consumer, KafkaError
-from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 
 logger = logging.getLogger("stream_api")
 router = APIRouter()

@@ -31,17 +31,17 @@ async def lifespan(app: FastAPI):
     # 1. Start MongoDB Client
     db_client = AsyncIOMotorClient(settings.MONGO_URI)
     app.state.db = db_client[settings.MONGO_DB]
+    logger.info("✅ MongoDB client initialized.")
 
-    # 2. Start Redis Cache
+    # 2. Start Redis Cache with Connection Health-Check
+    # 2. Start Redis Cache with Connection Health-Check
     try:
-        redis = redis_from_url(settings.REDIS_URL)
-        pong = await redis.ping()
+        redis_client = redis_from_url(settings.REDIS_URL)
+        pong = await redis_client.ping()
         logger.info(f"🔴 [REDIS CACHE INIT SUCCESS] Connected to Redis at {settings.REDIS_URL}. Ping: {pong}")
-        FastAPICache.init(RedisBackend(redis), prefix="api-cache")
-    except Exception as e:
-        logger.error(f"❌ [REDIS CACHE INIT ERROR] Failed to initialize FastAPICache with Redis: {e}", exc_info=True)
-
-    # 3. Start Scheduler
+        FastAPICache.init(RedisBackend(redis_client), prefix="api-cache")
+    except Exception:
+        logger.exception("❌ [REDIS CACHE INIT ERROR] Failed to initialize FastAPICache with Redis")
 
     # 3. Start Scheduler
     scheduler = AsyncIOScheduler()
@@ -68,10 +68,10 @@ app = FastAPI(title="Financial AI Gateway API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins (for local development)
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(predictions.router, prefix="/api/v1/predictions", tags=["Predictions"])

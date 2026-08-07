@@ -26,10 +26,10 @@ router = APIRouter()
 def prediction_key_builder(
     func,
     namespace: str = "",
-    request: Request = None,
-    response: Response = None,
+    request: Request | None = None,
+    response: Response | None = None,
     args: tuple = (),
-    kwargs: dict = None,
+    kwargs: dict | None = None,
 ) -> str:
     """Generates a deterministic Redis key based on stock ticker and hourly date bucket."""
     try:
@@ -41,18 +41,18 @@ def prediction_key_builder(
         cache_key = f"api-cache:predictions:{symbol}:{date_part}"
         logger.info(f"🔑 [Cache Key Built] Key: '{cache_key}' (Symbol: {symbol}, DateBucket: {date_part})")
         return cache_key
-    except Exception as e:
-        logger.error(f"❌ [Cache Key Builder Failed] Error: {e}", exc_info=True)
+    except Exception:
+        logger.exception("❌ [Cache Key Builder Failed]")
         return f"api-cache:predictions:fallback:{datetime.now(UTC).timestamp()}"
 
 
 def backtest_key_builder(
     func,
     namespace: str = "",
-    request: Request = None,
-    response: Response = None,
+    request: Request | None = None,
+    response: Response | None = None,
     args: tuple = (),
-    kwargs: dict = None,
+    kwargs: dict | None = None,
 ) -> str:
     """Generates a deterministic Redis key for backtest audit logs."""
     try:
@@ -65,8 +65,8 @@ def backtest_key_builder(
         cache_key = f"api-cache:backtest:{endpoint}:{symbol}:{model}:{page}:{limit}"
         logger.info(f"🔑 [Backtest Cache Key Built] Key: '{cache_key}'")
         return cache_key
-    except Exception as e:
-        logger.error(f"❌ [Backtest Cache Key Builder Failed] Error: {e}", exc_info=True)
+    except Exception:
+        logger.exception("❌ [Backtest Cache Key Builder Failed]")
         return f"api-cache:backtest:fallback:{datetime.now(UTC).timestamp()}"
 
 
@@ -145,7 +145,7 @@ async def get_dual_prediction(
     mlops_tasks = [fetch_mlops_prediction(symbol, features, h) for h in range(1, 6)]
     try:
         results = await asyncio.gather(*mlops_tasks, fetch_reasoning(symbol, target_dt))
-    except Exception as e: # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
         logger.error(f"❌ Internal prediction service failure: {e}")
         raise HTTPException(status_code=500, detail=f"Internal prediction service failure: {e!s}")
 
@@ -219,7 +219,7 @@ async def get_classification_backtest(
     symbol: str, 
     request: Request,
     model: str | None = None,
-    page: int = Query(1, ge=1), 
+    page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100)
 ):
     db = request.app.state.db
@@ -251,7 +251,7 @@ async def get_regression_backtest(
     symbol: str, 
     request: Request,
     model: str | None = None,
-    page: int = Query(1, ge=1), 
+    page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100)
 ):
     db = request.app.state.db

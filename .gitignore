@@ -23,3 +23,6 @@ data/gold_features.parquet
 
 # Logs files
 logs/*
+
+# Web
+app/web/node_modules/*

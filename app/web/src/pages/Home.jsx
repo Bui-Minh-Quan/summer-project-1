@@ -20,7 +20,6 @@ const VN30_PORTFOLIO = [
   { symbol: 'FPT', name: 'Tập đoàn FPT', category: 'Technology' },
   { symbol: 'GAS', name: 'Tổng Công ty Khí VN', category: 'Energy' },
   { symbol: 'GVR', name: 'Tập đoàn Cao su VN', category: 'Industrials' },
-  { symbol: 'HDB', name: 'Ngân hàng HDBank', category: 'Banking' },
   { symbol: 'HPG', name: 'Tập đoàn Hòa Phát', category: 'Materials' },
   { symbol: 'LPB', name: 'Ngân hàng LPBank', category: 'Banking' },
   { symbol: 'MBB', name: 'Ngân hàng Quân Đội (MB)', category: 'Banking' },

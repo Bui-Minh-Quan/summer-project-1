@@ -77,7 +77,7 @@ class GraphRepository:
                         "attention_score": round(record["attention_score"], 4),
                         "days_ago": record["delta_t"]
                     })
-        except Exception as e:
+        except Exception as e: # noqa: BLE001
             logger.error(f"Failed to retrieve TRR subgraph for {symbol}: {e}")
             
         return records
