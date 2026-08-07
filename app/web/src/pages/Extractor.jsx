@@ -27,7 +27,7 @@ export default function Extractor() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-130px)]">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-100">Knowledge Graph Extractor</h2>
-        <p className="text-slate-400 text-sm mt-1">Upload a financial report (PDF/TXT) to construct on-the-fly temporal relationship graphs via vLLM.</p>
+        <p className="text-slate-400 text-sm mt-1">Upload a financial report (PDF/TXT) to construct relationship graphs via vLLM.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[600px]">

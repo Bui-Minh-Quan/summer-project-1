@@ -30,7 +30,7 @@ def test_get_dual_prediction_success(client, mock_db):
     with patch("app.api.routers.predictions.fetch_mlops_prediction", AsyncMock(return_value=mock_mlops_resp)), \
          patch("app.api.routers.predictions.fetch_reasoning", AsyncMock(return_value=mock_reasoning_resp)):
 
-        response = client.post("/api/v1/predictions/", json={"symbol": "FPT"})
+        response = client.get("/api/v1/predictions/FPT")
 
         assert response.status_code == 200
         data = response.json()
@@ -45,7 +45,7 @@ def test_get_dual_prediction_success(client, mock_db):
 def test_get_dual_prediction_stock_not_found(client, mock_db):
     mock_db["gold_market_features"].find_one = AsyncMock(return_value=None)
 
-    response = client.post("/api/v1/predictions/", json={"symbol": "UNKNOWN"})
+    response = client.get("/api/v1/predictions/UNKNOWN")
     assert response.status_code == 404
 
 
@@ -61,7 +61,6 @@ def test_get_classification_backtest(client, mock_db):
         }
     ]
 
-    # Motor's find() is synchronous, so we use MagicMock
     cursor_mock = MagicMock()
     cursor_mock.sort.return_value = cursor_mock
     cursor_mock.skip.return_value = cursor_mock
