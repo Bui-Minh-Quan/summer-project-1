@@ -1,8 +1,9 @@
 import asyncio
+import logging
 from datetime import UTC, datetime
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi_cache.decorator import cache
 
 from app.api.core.config import settings
@@ -10,12 +11,68 @@ from app.api.core.schemas import (
     ClassificationRecord,
     DualPredictionResponse,
     HorizonPrediction,
-    PredictionRequest,
     RegressionRecord,
 )
 
+logger = logging.getLogger("predictions_router")
+logger.setLevel(logging.INFO)
+
 router = APIRouter()
 
+# ============================================================================
+# CUSTOM CACHE KEY BUILDERS
+# ============================================================================
+
+def prediction_key_builder(
+    func,
+    namespace: str = "",
+    request: Request | None = None,
+    response: Response | None = None,
+    args: tuple = (),
+    kwargs: dict | None = None,
+) -> str:
+    """Generates a deterministic Redis key based on stock ticker and hourly date bucket."""
+    try:
+        kwargs = kwargs or {}
+        symbol = str(kwargs.get("symbol", "UNKNOWN")).upper()
+        target_dt: datetime | None = kwargs.get("date")
+        
+        date_part = target_dt.strftime("%Y-%m-%d-%H") if target_dt else datetime.now(UTC).strftime("%Y-%m-%d-%H")
+        cache_key = f"api-cache:predictions:{symbol}:{date_part}"
+        logger.info(f"🔑 [Cache Key Built] Key: '{cache_key}' (Symbol: {symbol}, DateBucket: {date_part})")
+        return cache_key
+    except Exception:
+        logger.exception("❌ [Cache Key Builder Failed]")
+        return f"api-cache:predictions:fallback:{datetime.now(UTC).timestamp()}"
+
+
+def backtest_key_builder(
+    func,
+    namespace: str = "",
+    request: Request | None = None,
+    response: Response | None = None,
+    args: tuple = (),
+    kwargs: dict | None = None,
+) -> str:
+    """Generates a deterministic Redis key for backtest audit logs."""
+    try:
+        kwargs = kwargs or {}
+        symbol = str(kwargs.get("symbol", "UNKNOWN")).upper()
+        model = str(kwargs.get("model", "all"))
+        page = kwargs.get("page", 1)
+        limit = kwargs.get("limit", 50)
+        endpoint = func.__name__
+        cache_key = f"api-cache:backtest:{endpoint}:{symbol}:{model}:{page}:{limit}"
+        logger.info(f"🔑 [Backtest Cache Key Built] Key: '{cache_key}'")
+        return cache_key
+    except Exception:
+        logger.exception("❌ [Backtest Cache Key Builder Failed]")
+        return f"api-cache:backtest:fallback:{datetime.now(UTC).timestamp()}"
+
+
+# ============================================================================
+# SERVICE HELPERS
+# ============================================================================
 
 async def fetch_mlops_prediction(symbol: str, features: dict, horizon: int) -> dict:
     """Calls the internal XGBoost MLOps service."""
@@ -35,12 +92,22 @@ async def fetch_reasoning(symbol: str, target_date: datetime) -> dict:
         return response.json()
 
 
-@router.post("/", response_model=DualPredictionResponse)
-@cache(expire=43200)
-async def get_dual_prediction(req: PredictionRequest, request: Request):
+# ============================================================================
+# ROUTER ENDPOINTS
+# ============================================================================
+
+@router.get("/{symbol}", response_model=DualPredictionResponse)
+@cache(expire=43200, key_builder=prediction_key_builder)
+async def get_dual_prediction(
+    symbol: str, 
+    request: Request,
+    date: datetime | None = Query(None, description="Target date for prediction. Defaults to current UTC time if omitted.")
+):
+    symbol = symbol.upper()
+    logger.info(f"🚨 [CACHE MISS / EXECUTING ENGINES] Running fresh dual prediction for symbol '{symbol}'...")
+    
     db = request.app.state.db
-    symbol = req.symbol.upper()
-    target_dt = req.date or datetime.now(UTC)
+    target_dt = date or datetime.now(UTC)
 
     # 1. Fetch feature record from gold_market_features on or before target_dt
     feature_doc = await db["gold_market_features"].find_one(
@@ -48,7 +115,6 @@ async def get_dual_prediction(req: PredictionRequest, request: Request):
         sort=[("timestamp", -1)]
     )
 
-    # Fallback to the latest available feature document if no exact historical match
     if not feature_doc:
         feature_doc = await db["gold_market_features"].find_one(
             {"symbol": symbol},
@@ -56,6 +122,7 @@ async def get_dual_prediction(req: PredictionRequest, request: Request):
         )
 
     if not feature_doc:
+        logger.error(f"❌ Stock features not found for ticker '{symbol}'")
         raise HTTPException(status_code=404, detail=f"No feature records found for stock {symbol}")
 
     base_price = float(feature_doc.get("close_price", 0.0))
@@ -78,13 +145,14 @@ async def get_dual_prediction(req: PredictionRequest, request: Request):
     mlops_tasks = [fetch_mlops_prediction(symbol, features, h) for h in range(1, 6)]
     try:
         results = await asyncio.gather(*mlops_tasks, fetch_reasoning(symbol, target_dt))
-    except Exception as e: # noqa: BLE001
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"❌ Internal prediction service failure: {e}")
         raise HTTPException(status_code=500, detail=f"Internal prediction service failure: {e!s}")
 
     mlops_results = results[:-1]
     reasoning_result = results[-1]
 
-    # 3. Calculate expected target prices (Price = BasePrice * (1 + Return))
+    # 3. Calculate expected target prices
     forecasts = []
     for res in mlops_results:
         ret_pct = res["predicted_return_pct"]
@@ -141,16 +209,17 @@ async def get_dual_prediction(req: PredictionRequest, request: Request):
 
     await db["predictions_log"].insert_many([classification_log, regression_log])
 
+    logger.info(f"✅ [DUAL PREDICTION COMPLETE] Finished prediction for symbol '{symbol}'. Returning to client/cache.")
     return final_response
 
 
 @router.get("/backtest/classification/{symbol}", response_model=list[ClassificationRecord])
-@cache()
+@cache(expire=3600, key_builder=backtest_key_builder)
 async def get_classification_backtest(
     symbol: str, 
     request: Request,
     model: str | None = None,
-    page: int = Query(1, ge=1), 
+    page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100)
 ):
     db = request.app.state.db
@@ -177,12 +246,12 @@ async def get_classification_backtest(
 
 
 @router.get("/backtest/regression/{symbol}", response_model=list[RegressionRecord])
-@cache()
+@cache(expire=3600, key_builder=backtest_key_builder)
 async def get_regression_backtest(
     symbol: str, 
     request: Request,
     model: str | None = None,
-    page: int = Query(1, ge=1), 
+    page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=100)
 ):
     db = request.app.state.db
@@ -205,8 +274,8 @@ async def get_regression_backtest(
                 predicted_price_t1=forecasts[0]["expected_price"] if len(forecasts) > 0 else 0.0,
                 predicted_price_t2=forecasts[1]["expected_price"] if len(forecasts) > 1 else 0.0,
                 predicted_price_t3=forecasts[2]["expected_price"] if len(forecasts) > 2 else 0.0,
-                predicted_price_t4=forecasts[3]["expected_price"] if len(forecasts) > 3 else 0.0,
-                predicted_price_t5=forecasts[4]["expected_price"] if len(forecasts) > 4 else 0.0,
+                predicted_price_t4=forecasts[3]["expected_price"] if len(forecasts) > 4 else 0.0,
+                predicted_price_t5=forecasts[4]["expected_price"] if len(forecasts) > 5 else 0.0,
                 actual_price_t1=pred.get("actual_price_t1"),
                 actual_price_t2=pred.get("actual_price_t2"),
                 actual_price_t3=pred.get("actual_price_t3"),

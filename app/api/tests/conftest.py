@@ -15,12 +15,14 @@ def mock_db():
 def override_lifespan_dependencies(mock_db):
     """Intercepts lifespan initializations to prevent real DB/Redis connections."""
     
-    # When app/api/main.py calls AsyncIOMotorClient()[settings.MONGO_DB], it returns mock_db
     mock_client = MagicMock()
     mock_client.__getitem__.return_value = mock_db
 
+    mock_redis = MagicMock()
+    mock_redis.ping = AsyncMock(return_value=True)
+
     with patch("app.api.main.AsyncIOMotorClient", return_value=mock_client), \
-         patch("app.api.main.redis_from_url", AsyncMock()), \
+         patch("app.api.main.redis_from_url", return_value=mock_redis), \
          patch("app.api.main.FastAPICache.init"), \
          patch("app.api.main.consume_kafka_market_data", AsyncMock()), \
          patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.start"), \
