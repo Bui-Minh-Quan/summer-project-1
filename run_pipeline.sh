@@ -30,7 +30,7 @@ fi
 
 echo "✅ Infrastructure is ready!"
 
-# Clean shutdown handler (Kills ONLY Python background processes, leaves Docker containers alive)
+# Clean shutdown handler (Kills Python background processes)
 trap 'echo -e "\n🛑 Stopping Python application processes..."; kill $(jobs -p) 2>/dev/null; exit' EXIT
 
 # 3. Start internal APIs
@@ -61,7 +61,7 @@ echo ""
 echo "=================================================="
 echo "✅ Application services running!"
 echo "📁 Logs: 'tail -f logs/<service>.log'"
-echo "Press Ctrl+C to stop app processes (Docker stays alive)."
+echo "Press Ctrl+C to stop app processes"
 echo "=================================================="
 echo ""
 

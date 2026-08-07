@@ -2,7 +2,7 @@ import asyncio
 from datetime import UTC, datetime
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi_cache.decorator import cache
 
 from app.api.core.config import settings
@@ -16,6 +16,47 @@ from app.api.core.schemas import (
 
 router = APIRouter()
 
+# ============================================================================
+# CUSTOM CACHE KEY BUILDERS (Fixes Request Object Memory Address Bug)
+# ============================================================================
+
+def prediction_key_builder(
+    func,
+    namespace: str = "",
+    request: Request = None,
+    response: Response = None,
+    args: tuple = (),
+    kwargs: dict = None,
+) -> str:
+    """Generates a deterministic Redis key based on stock ticker and hourly date bucket."""
+    kwargs = kwargs or {}
+    req: PredictionRequest | None = kwargs.get("req")
+    symbol = req.symbol.upper() if req else "UNKNOWN"
+    date_part = req.date.strftime("%Y-%m-%d-%H") if (req and req.date) else datetime.now(UTC).strftime("%Y-%m-%d-%H")
+    return f"api-cache:predictions:{symbol}:{date_part}"
+
+
+def backtest_key_builder(
+    func,
+    namespace: str = "",
+    request: Request = None,
+    response: Response = None,
+    args: tuple = (),
+    kwargs: dict = None,
+) -> str:
+    """Generates a deterministic Redis key for backtest audit logs."""
+    kwargs = kwargs or {}
+    symbol = str(kwargs.get("symbol", "UNKNOWN")).upper()
+    model = str(kwargs.get("model", "all"))
+    page = kwargs.get("page", 1)
+    limit = kwargs.get("limit", 50)
+    endpoint = func.__name__
+    return f"api-cache:backtest:{endpoint}:{symbol}:{model}:{page}:{limit}"
+
+
+# ============================================================================
+# SERVICE HELPERS
+# ============================================================================
 
 async def fetch_mlops_prediction(symbol: str, features: dict, horizon: int) -> dict:
     """Calls the internal XGBoost MLOps service."""
@@ -35,8 +76,12 @@ async def fetch_reasoning(symbol: str, target_date: datetime) -> dict:
         return response.json()
 
 
+# ============================================================================
+# ROUTER ENDPOINTS
+# ============================================================================
+
 @router.post("/", response_model=DualPredictionResponse)
-@cache(expire=43200)
+@cache(expire=43200, key_builder=prediction_key_builder)
 async def get_dual_prediction(req: PredictionRequest, request: Request):
     db = request.app.state.db
     symbol = req.symbol.upper()
@@ -145,7 +190,7 @@ async def get_dual_prediction(req: PredictionRequest, request: Request):
 
 
 @router.get("/backtest/classification/{symbol}", response_model=list[ClassificationRecord])
-@cache()
+@cache(expire=3600, key_builder=backtest_key_builder)
 async def get_classification_backtest(
     symbol: str, 
     request: Request,
@@ -177,7 +222,7 @@ async def get_classification_backtest(
 
 
 @router.get("/backtest/regression/{symbol}", response_model=list[RegressionRecord])
-@cache()
+@cache(expire=3600, key_builder=backtest_key_builder)
 async def get_regression_backtest(
     symbol: str, 
     request: Request,
