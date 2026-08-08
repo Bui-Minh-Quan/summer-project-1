@@ -1,92 +1,207 @@
+version: '3.8'
+
 services:
-  # MongoDB
+  # ==========================================
+  # 1. INFRASTRUCTURE LAYER
+  # ==========================================
   mongodb:
     image: mongo:7.0
     container_name: mongodb
     restart: unless-stopped
-
     ports:
       - "27017:27017"
-
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-secretpassword}
-
     volumes:
       - mongo_data:/data/db
 
-  # Kafka
   kafka:
     image: apache/kafka:4.1.0
     container_name: kafka
     restart: unless-stopped
-
     ports:
       - "9092:9092"
-
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-
     volumes:
       - kafka_data:/var/lib/kafka/data
 
-  # Redis
   redis:
     image: redis:7.2-alpine
     container_name: redis
     restart: unless-stopped
-
     ports:
       - "6379:6379"
-
-    command: redis-server --save 60 1 --loglevel warning
-
     volumes:
       - redis_data:/data
 
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Neo4j
   neo4j:
     image: neo4j:5
     container_name: neo4j
     restart: unless-stopped
-
     ports:
-      - "7474:7474" # HTTP Browser UI
-      - "7687:7687" # Bolt Protocol for Python driver connections
-
+      - "7474:7474"
+      - "7687:7687"
     environment:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASS:-secretpassword}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: apoc.*
-
     volumes:
       - neo4j_data:/data
 
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7474/"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
+  # ==========================================
+  # 2. vLLM INFERENCE ENGINE
+  # ==========================================
+  vllm:
+    image: vllm/vllm-openai:v0.10.1
+    container_name: vllm
+    restart: unless-stopped
+    runtime: nvidia
+    ipc: host
+    ports:
+      - "8008:8000"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    command: >
+      --model Qwen/Qwen2.5-1.5B-Instruct-GPTQ-Int4
+      --served-model-name qwen-1.5b
+      --dtype auto
+      --max-model-len 8192
+      --gpu-memory-utilization 0.90
+      --enforce-eager
+      --guided-decoding-backend xgrammar
+      --enable-chunked-prefill
+      --max-num-seqs 8
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # ==========================================
+  # 3. INTERNAL APIS
+  # ==========================================
+  mlops-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: mlops-api
+    command: uvicorn modules.mlops.serving.api:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    environment:
+      - MLFLOW_TRACKING_URI=sqlite:////tmp/mlflow.db
+      - MONGO_URI=mongodb://admin:secretpassword@mongodb:27017/?authSource=admin
+    depends_on:
+      - mongodb
+
+  reasoning-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: reasoning_api
+    command: uvicorn modules.reasoning.api:app --host 0.0.0.0 --port 8002
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secretpassword}@mongodb:27017/?authSource=admin
+      - NEO4J_URI=bolt://neo4j:7687
+      - VLLM_BASE_URL=http://vllm:8000/v1
+    depends_on:
+      - mongodb
+      - neo4j
+      - vllm
+
+  gateway-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: gateway_api
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secretpassword}@mongodb:27017/?authSource=admin
+      - REDIS_URL=redis://redis:6379/0
+      - NEO4J_URI=bolt://neo4j:7687
+      - KAFKA_BROKER=kafka:9092
+      - MLOPS_API_URL=http://mlops-api:8001
+      - REASONING_API_URL=http://reasoning-api:8002
+    depends_on:
+      - mongodb
+      - redis
+      - kafka
+      - mlops-api
+      - reasoning-api
+
+  # ==========================================
+  # 4. BACKGROUND STREAMING WORKERS
+  # ==========================================
+  acquisition-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: acquisition_worker
+    command: >
+      bash -c "python modules/acquisition/documents_stream.py --mode continuous --kafka-broker kafka:9092 --mongo-uri mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secretpassword}@mongodb:27017/?authSource=admin &
+               python modules/acquisition/market_stream.py --mode continuous --kafka-broker kafka:9092 --mongo-uri mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secretpassword}@mongodb:27017/?authSource=admin &
+               wait"
+    environment:
+      - FIRE_ANT_BEARER=${FIRE_ANT_BEARER:-}
+    depends_on:
+      - kafka
+      - mongodb
+
+  extraction-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: extraction_worker
+    command: >
+      bash -c "python modules/extraction/documents_stream.py --mode continuous --kafka-broker kafka:9092 --mongo-uri mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secretpassword}@mongodb:27017/?authSource=admin --redis-url redis://redis:6379/0 --vllm-url http://vllm:8000/v1 &
+               python modules/extraction/market_stream.py &
+               wait"
+    depends_on:
+      - kafka
+      - mongodb
+      - redis
+      - vllm
+
+  graph-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: graph_worker
+    command: python modules/graph/graph_stream.py --mode continuous
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - KAFKA_BROKER=kafka:9092
+    depends_on:
+      - kafka
+      - neo4j
+
+  # ==========================================
+  # 5. FRONTEND UI
+  # ==========================================
+  frontend:
+    build:
+      context: ./app/web
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway-api
 
 volumes:
   mongo_data:

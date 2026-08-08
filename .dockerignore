@@ -1,0 +1,13 @@
+# .dockerignore
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.env
+app/web/node_modules/
+app/web/dist/
+logs/
+mlruns/
+mlflow.db

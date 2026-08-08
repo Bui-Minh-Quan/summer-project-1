@@ -14,18 +14,38 @@ export default function Dashboard({ selectedSymbol, setSelectedSymbol }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch initial data when symbol changes
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       setError(null);
+
       try {
-        const [predRes, sentRes] = await Promise.all([
-          getDualPrediction(selectedSymbol),
-          getSentimentScore(selectedSymbol)
-        ]);
-        setPredictionData(predRes);
+        // Fetch Sentiment Score
+        const sentRes = await getSentimentScore(selectedSymbol);
         setSentimentData(sentRes);
+
+        // Fetch Dual Prediction with 404 Fallback
+        try {
+          const predRes = await getDualPrediction(selectedSymbol);
+          setPredictionData(predRes);
+        } catch (predErr) {
+          if (predErr.response && predErr.response.status === 404) {
+            setPredictionData({
+              symbol: selectedSymbol,
+              current_price: 0.0,
+              trend: 'Sideways',
+              confidence: 0.0,
+              reasoning: `No historical feature data is currently populated for ${selectedSymbol}. Awaiting automatic data backfill.`,
+              price_forecasts: [1, 2, 3, 4, 5].map((h) => ({
+                horizon_days: h,
+                expected_return_pct: 0.0,
+                expected_price: 0.0,
+              })),
+            });
+          } else {
+            throw predErr; // Rethrow 500s to the outer catch
+          }
+        }
       } catch (err) {
         console.error("Dashboard fetch error:", err);
         setError("Failed to load AI forecasts. Ensure backend services are running.");
@@ -46,7 +66,6 @@ export default function Dashboard({ selectedSymbol, setSelectedSymbol }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Sticky Header */}
       <TickerHeader 
         selectedSymbol={selectedSymbol} 
         setSelectedSymbol={setSelectedSymbol}
@@ -54,7 +73,6 @@ export default function Dashboard({ selectedSymbol, setSelectedSymbol }) {
         sentimentData={sentimentData}
       />
 
-      {/* Sub-navigation Tabs */}
       <div className="border-b border-slate-800 bg-slate-900/50 sticky top-[64px] z-40 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-6 overflow-x-auto hide-scrollbar">
@@ -75,7 +93,6 @@ export default function Dashboard({ selectedSymbol, setSelectedSymbol }) {
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 text-slate-400">
