@@ -12,6 +12,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from modules.mlops.config import config
+from modules.mlops.data_extractor import extract_gold_features
+from modules.mlops.evaluate import evaluate_and_promote_all
+from modules.mlops.train import train_all_models
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("mlops_serving_api")
