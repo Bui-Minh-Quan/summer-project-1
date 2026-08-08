@@ -21,13 +21,57 @@ production_cls_models: dict[int, Any] = {}
 production_reg_models: dict[int, Any] = {}
 
 
+import logging
+from contextlib import asynccontextmanager
+from typing import Any
+
+import mlflow
+import numpy as np
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+from modules.mlops.config import config
+from modules.mlops.data_extractor import extract_gold_features
+from modules.mlops.evaluate import evaluate_and_promote_all
+from modules.mlops.train import train_all_models
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("mlops_serving_api")
+
+production_cls_models: dict[int, Any] = {}
+production_reg_models: dict[int, Any] = {}
+
+
+def ensure_models_trained():
+    """Auto-trains and promotes baseline models if MLflow has no @production models."""
+    mlflow.set_tracking_uri(config.mlflow_tracking_uri)
+    client = mlflow.tracking.MlflowClient()
+
+    # Check if t+1 model exists
+    try:
+        client.get_model_version_by_alias("VN30_Trend_Classifier_t1", "production")
+        logger.info("✅ Existing @production models detected in MLflow.")
+    except Exception:
+        logger.warning("⚠️ No @production models found. Running automatic bootstrap pipeline (Extract -> Train -> Promote)...")
+        try:
+            extract_gold_features()
+            train_all_models()
+            evaluate_and_promote_all()
+            logger.info("🎉 Automatic model bootstrapping completed!")
+        except Exception as e:
+            logger.error(f"❌ Auto-training failed: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Loads all @production models across target horizons on startup."""
+    """Auto-bootstraps models if needed, then loads @production models on startup."""
     mlflow.set_tracking_uri(config.mlflow_tracking_uri)
 
+    # 1. Automatically train baseline models if database is fresh
+    ensure_models_trained()
+
+    # 2. Load production models
     for h in config.target_horizons:
-        # 1. Load Classification Model
         try:
             cls_name = f"VN30_Trend_Classifier_t{h}"
             production_cls_models[h] = mlflow.xgboost.load_model(f"models:/{cls_name}@production")
@@ -35,7 +79,6 @@ async def lifespan(app: FastAPI):
         except Exception as e:  # noqa: BLE001
             logger.warning(f"⚠️ Could not load @production for {cls_name}: {e}")
 
-        # 2. Load Regression Model
         try:
             reg_name = f"VN30_Return_Regressor_t{h}"
             production_reg_models[h] = mlflow.xgboost.load_model(f"models:/{reg_name}@production")
@@ -49,7 +92,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Financial AI Platform - Stock Prediction API",
-    version="2.0.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
