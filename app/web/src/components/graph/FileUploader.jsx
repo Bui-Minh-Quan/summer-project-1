@@ -49,6 +49,8 @@ export default function FileUploader({ onUpload, isLoading, graphData }) {
         >
           <input 
             type="file" 
+            id="file-upload-input"
+            name="file-upload-input"
             ref={fileInputRef} 
             className="hidden" 
             accept=".pdf,.txt" 

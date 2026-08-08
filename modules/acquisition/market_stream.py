@@ -39,8 +39,8 @@ def bootstrap_infrastructure(
             unique=True,
             name="idx_unique_symbol_timestamp",
         )
-        logger.info(f"✅ MongoDB compound index 'idx_unique_symbol_timestamp' verified.")
-    except Exception as e:
+        logger.info("✅ MongoDB compound index 'idx_unique_symbol_timestamp' verified.")
+    except Exception as e: # noqa: BLE001
         logger.warning(f"⚠️ Notice during MongoDB index creation: {e!s}")
 
     try:
@@ -127,7 +127,7 @@ def main() -> None:
             report = service.run_backfill(start_date=args.start_date, end_date=args.end_date)
             logger.info(f"🎉 Backfill complete in {report.duration_seconds}s")
         else:
-            logger.info(f"🔄 Starting continuous real-time market acquisition loop...")
+            logger.info("🔄 Starting continuous real-time market acquisition loop...")
             service.run_continuous(interval_seconds=args.interval)
     except KeyboardInterrupt:
         logger.info("🛑 Market acquisition stream stopped cleanly by user.")

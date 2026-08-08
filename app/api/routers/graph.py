@@ -1,4 +1,5 @@
 import io
+import os
 import uuid
 from typing import Annotated
 
@@ -12,9 +13,11 @@ from modules.extraction.services.extraction_service import ExtractionService
 
 router = APIRouter()
 
-llm_client = VLLMClient(base_url="http://localhost:8008/v1")
-cache = LLMExtractionCache(redis_url=settings.REDIS_URL)
+# FIX: Dynamically route to vLLM across the Docker network instead of hardcoded localhost
+vllm_endpoint = getattr(settings, "VLLM_URL", os.getenv("VLLM_URL", "http://vllm:8000/v1"))
+llm_client = VLLMClient(base_url=vllm_endpoint)
 
+cache = LLMExtractionCache(redis_url=settings.REDIS_URL)
 
 @router.post("/extract")
 async def extract_knowledge_graph(

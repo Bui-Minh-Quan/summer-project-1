@@ -21,27 +21,6 @@ production_cls_models: dict[int, Any] = {}
 production_reg_models: dict[int, Any] = {}
 
 
-import logging
-from contextlib import asynccontextmanager
-from typing import Any
-
-import mlflow
-import numpy as np
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-
-from modules.mlops.config import config
-from modules.mlops.data_extractor import extract_gold_features
-from modules.mlops.evaluate import evaluate_and_promote_all
-from modules.mlops.train import train_all_models
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("mlops_serving_api")
-
-production_cls_models: dict[int, Any] = {}
-production_reg_models: dict[int, Any] = {}
-
-
 def ensure_models_trained():
     """Auto-trains and promotes baseline models if MLflow has no @production models."""
     mlflow.set_tracking_uri(config.mlflow_tracking_uri)
@@ -51,14 +30,14 @@ def ensure_models_trained():
     try:
         client.get_model_version_by_alias("VN30_Trend_Classifier_t1", "production")
         logger.info("✅ Existing @production models detected in MLflow.")
-    except Exception:
+    except Exception: # noqa: BLE001
         logger.warning("⚠️ No @production models found. Running automatic bootstrap pipeline (Extract -> Train -> Promote)...")
         try:
             extract_gold_features()
             train_all_models()
             evaluate_and_promote_all()
             logger.info("🎉 Automatic model bootstrapping completed!")
-        except Exception as e:
+        except Exception as e: # noqa: BLE001
             logger.error(f"❌ Auto-training failed: {e}")
 
 

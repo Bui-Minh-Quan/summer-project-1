@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000/api/v1/stream';
+// Dynamically determine WebSocket protocol and host to avoid CORS
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const defaultWsUrl = `${protocol}//${window.location.host}/api/v1/stream`;
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || defaultWsUrl;
 
-/**
- * Custom React Hook for streaming real-time market ticks via WebSocket.
- * Connects to ws://localhost:8000/api/v1/stream/{symbol}
- */
 export const useMarketStream = (symbol) => {
   const [latestTick, setLatestTick] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -48,11 +47,8 @@ export const useMarketStream = (symbol) => {
 
   useEffect(() => {
     connect();
-
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      if (wsRef.current) wsRef.current.close();
     };
   }, [connect]);
 
