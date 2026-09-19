@@ -5,11 +5,14 @@
 
 ## 1. Mô tả dự án
 
-**Financial AI Platform** là hệ thống phân tích định lượng và dự báo thị trường chứng khoán (tập trung vào nhóm VN30), ứng dụng kiến trúc AI Kép.
+**Financial Event Reasoning System** là hệ thống phân tích và dự báo xu hướng thị trường chứng khoán dựa trên sự kết hợp giữa Mô hình Ngôn ngữ Lớn (LLM) và Đồ thị Tri thức Thời gian (Temporal Knowledge Graph).
 
-Hệ thống kết hợp sức mạnh của Mô hình Ngôn ngữ Lớn (**vLLM - Qwen**) để suy luận quan hệ nhân quả theo thời gian (Temporal Relational Reasoning - TRR) từ Đồ thị Tri thức (Knowledge Graph), cùng với thuật toán Học máy **XGBoost** để dự phóng giá trị tài sản đa khung thời gian (Multi-Horizon Forecasting từ T+1 đến T+5).
+Dự án được truyền cảm hứng và kế thừa phương pháp luận từ nghiên cứu [*“Temporal Relational Reasoning of Large Language Models for Detecting Stock Portfolio Crashes”* (arXiv:2410.17266)](https://arxiv.org/pdf/2410.17266?utm_source=gemini). Tuy nhiên, thay vì tập trung vào bài toán cảnh báo sụp đổ danh mục (portfolio crash detection) như nguyên bản của bài báo, hệ thống được tinh chỉnh và mở rộng để phục vụ hai mục tiêu chính:
 
-Toàn bộ hệ thống được xây dựng theo kiến trúc **Event-Driven Microservices**, xử lý luồng dữ liệu thời gian thực qua Apache Kafka, tự động thu thập tin tức, phân tích tâm lý đám đông (Social Sentiment) và truyền tải trực tiếp tới người dùng qua WebSockets.
+1. **Dự báo xu hướng (Trend Prediction):** Phân tích sự lan truyền tác động của các sự kiện tài chính qua không gian thời gian để hỗ trợ dự báo xu hướng biến động của tài sản.
+2. **Lập luận giải thích (Event-based Reasoning):** Khai thác khả năng suy luận của LLM để tự động tổng hợp các chuỗi quan hệ nhân quả, cung cấp cơ sở giải thích minh bạch cho các biến động thị trường dựa trên dữ liệu tin tức và giao dịch thực tế.
+
+Được thiết kế theo kiến trúc **Event-Driven Microservices**, hệ thống tích hợp luồng dữ liệu thời gian thực thông qua **Apache Kafka**, xử lý tự động hàng chục nghìn bản tin tài chính bằng **vLLM** (tối ưu với continuous batching), xây dựng đồ thị quan hệ bằng **Neo4j**, và cung cấp tầng phục vụ real-time qua **FastAPI** kết hợp **WebSockets** và **Redis**.
 
 ---
 
